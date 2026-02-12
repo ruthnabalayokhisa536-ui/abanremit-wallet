@@ -1,27 +1,27 @@
-import React, { useState } from "react";
+import React from "react";
+import { Navigate, useParams } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
 
 const demoDeposits = [
-  { id: "TXN20260211001", user: "Alice Kamau", amount: "KES 5,000.00", method: "M-Pesa", date: "11/02/2026 14:32", status: "Completed" },
-  { id: "TXN20260207034", user: "Peter Ochieng", amount: "KES 10,000.00", method: "Wallet", date: "07/02/2026 08:00", status: "Completed" },
+  { id: "TXN20260211001", user: "Purity Musembi", wallet: "7770001", amount: "KES 5,000.00", method: "M-Pesa", date: "11/02/2026 14:32", status: "Completed" },
+  { id: "TXN20260207034", user: "Alice Kamau", wallet: "7770002", amount: "KES 10,000.00", method: "PesaPal", date: "07/02/2026 08:00", status: "Completed" },
 ];
 
 const demoWithdrawals = [
-  { id: "TXN20260210045", user: "Alice Kamau", amount: "KES 1,200.00", method: "M-Pesa", fee: "KES 30.00", date: "10/02/2026 09:15", status: "Completed" },
+  { id: "TXN20260210045", user: "Purity Musembi", amount: "KES 1,200.00", method: "M-Pesa", fee: "KES 30.00", date: "10/02/2026 09:15", status: "Completed" },
   { id: "TXN20260208090", user: "Grace Wanjiku", amount: "KES 500.00", method: "Agent", fee: "KES 15.00", date: "08/02/2026 12:30", status: "Completed" },
 ];
 
 const demoTransfers = [
-  { id: "TXN20260211030", from: "AGT-0042", to: "WAL-2026-4829-7183", amount: "KES 8,000.00", fee: "KES 0.00", date: "11/02/2026 13:10", status: "Completed" },
-  { id: "TXN20260210019", from: "AGT-0042", to: "WAL-2026-5930-8294", amount: "KES 5,000.00", fee: "KES 50.00", date: "10/02/2026 10:30", status: "Completed" },
+  { id: "TXN20260211030", from: "AGT-0042 (Ethan Khisa)", to: "7770001", amount: "KES 8,000.00", fee: "KES 0.00", date: "11/02/2026 13:10", status: "Completed" },
+  { id: "TXN20260210019", from: "AGT-0042", to: "7770002", amount: "KES 5,000.00", fee: "KES 50.00", date: "10/02/2026 10:30", status: "Completed" },
 ];
 
 const demoStatements = [
-  { id: "STM-001", user: "Alice Kamau", fee: "KES 50.00", date: "11/02/2026 14:45" },
-  { id: "STM-002", user: "Peter Ochieng", fee: "KES 50.00", date: "10/02/2026 11:00" },
+  { id: "STM-001", user: "Purity Musembi", fee: "KES 50.00", date: "11/02/2026 14:45" },
+  { id: "STM-002", user: "Alice Kamau", fee: "KES 50.00", date: "10/02/2026 11:00" },
 ];
 
 const TxTable = ({ headers, rows }: { headers: string[]; rows: string[][] }) => (
@@ -48,11 +48,14 @@ const TxTable = ({ headers, rows }: { headers: string[]; rows: string[][] }) => 
 );
 
 const AdminTransactionsPage = () => {
+  const { tab } = useParams();
+  const defaultTab = tab || "deposits";
+
   return (
     <DashboardLayout role="admin">
       <div className="max-w-6xl mx-auto space-y-6">
         <h2 className="text-2xl font-bold text-foreground">Transactions</h2>
-        <Tabs defaultValue="deposits">
+        <Tabs defaultValue={defaultTab}>
           <TabsList className="w-full justify-start">
             <TabsTrigger value="deposits">Deposits</TabsTrigger>
             <TabsTrigger value="withdrawals">Withdrawals</TabsTrigger>
@@ -63,8 +66,8 @@ const AdminTransactionsPage = () => {
 
           <TabsContent value="deposits">
             <TxTable
-              headers={["Transaction ID", "User", "Amount", "Method", "Date", "Status"]}
-              rows={demoDeposits.map(d => [d.id, d.user, d.amount, d.method, d.date, d.status])}
+              headers={["Transaction ID", "User", "Wallet", "Amount", "Method", "Date", "Status"]}
+              rows={demoDeposits.map(d => [d.id, d.user, d.wallet, d.amount, d.method, d.date, d.status])}
             />
           </TabsContent>
 

@@ -5,17 +5,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import PinInput from "@/components/PinInput";
 import ReceiptScreen from "@/components/ReceiptScreen";
+import { getLoggedInUser } from "@/lib/test-accounts";
 
 type Step = "form" | "confirm" | "pin" | "receipt";
+type Method = "mpesa" | "pesapal" | "card";
 
 const DepositPage = () => {
   const [step, setStep] = useState<Step>("form");
-  const [method, setMethod] = useState<"mpesa" | "wallet">("mpesa");
+  const [method, setMethod] = useState<Method>("mpesa");
   const [amount, setAmount] = useState("");
+  const [cardForm, setCardForm] = useState({ number: "", expiry: "", cvv: "", name: "" });
+  const user = getLoggedInUser();
+  const serviceFee = 0.40;
 
   const handleConfirm = () => setStep("pin");
   const handlePin = () => setStep("receipt");
-  const handleDone = () => { setStep("form"); setAmount(""); };
+  const handleDone = () => { setStep("form"); setAmount(""); setCardForm({ number: "", expiry: "", cvv: "", name: "" }); };
 
   if (step === "pin") {
     return (
@@ -32,15 +37,17 @@ const DepositPage = () => {
       <DashboardLayout role="user">
         <div className="max-w-md mx-auto">
           <ReceiptScreen
-            title="Deposit Successful"
-            message={`KES ${amount}.00 has been deposited to your wallet via ${method === "mpesa" ? "M-Pesa" : "Wallet"}.`}
+            title="Wallet Loaded Successfully"
+            message={`KES ${amount}.00 has been loaded to your wallet via ${method === "mpesa" ? "M-Pesa" : method === "pesapal" ? "PesaPal" : "Card"}.`}
             items={[
-              { label: "Transaction ID", value: "TXN20260211099" },
+              { label: "Transaction ID", value: "TXN20260212099" },
               { label: "Amount", value: `KES ${amount}.00` },
-              { label: "Method", value: method === "mpesa" ? "M-Pesa" : "Wallet" },
-              { label: "Fee", value: "KES 0.00" },
-              { label: "New Balance", value: `KES ${(15300 + Number(amount)).toLocaleString()}.00` },
-              { label: "Date", value: "11/02/2026 14:35" },
+              { label: "Method", value: method === "mpesa" ? "M-Pesa" : method === "pesapal" ? "PesaPal" : "Card" },
+              { label: "Service Fee", value: `KES ${serviceFee.toFixed(2)}` },
+              { label: "Sender", value: user?.name ?? "User" },
+              { label: "Wallet ID", value: user?.walletId ?? "7770001" },
+              { label: "New Balance", value: `KES ${((user?.balance ?? 15300) + Number(amount)).toLocaleString()}.00` },
+              { label: "Date", value: new Date().toLocaleString() },
             ]}
             onDone={handleDone}
           />
@@ -52,15 +59,16 @@ const DepositPage = () => {
   return (
     <DashboardLayout role="user">
       <div className="max-w-md mx-auto space-y-6">
-        <h2 className="text-2xl font-bold text-foreground">Deposit</h2>
+        <h2 className="text-2xl font-bold text-foreground">Load Wallet</h2>
 
         {step === "form" && (
           <Card className="p-6 space-y-4">
             <div>
-              <label className="text-sm font-medium text-foreground">Deposit Method</label>
+              <label className="text-sm font-medium text-foreground">Payment Method</label>
               <div className="flex gap-2 mt-2">
                 <Button variant={method === "mpesa" ? "default" : "outline"} onClick={() => setMethod("mpesa")} className="flex-1">M-Pesa</Button>
-                <Button variant={method === "wallet" ? "default" : "outline"} onClick={() => setMethod("wallet")} className="flex-1">Wallet</Button>
+                <Button variant={method === "pesapal" ? "default" : "outline"} onClick={() => setMethod("pesapal")} className="flex-1">PesaPal</Button>
+                <Button variant={method === "card" ? "default" : "outline"} onClick={() => setMethod("card")} className="flex-1">Card</Button>
               </div>
             </div>
             <div>
@@ -70,21 +78,44 @@ const DepositPage = () => {
             {method === "mpesa" && (
               <div>
                 <label className="text-sm font-medium text-foreground">M-Pesa Number</label>
-                <Input value="+254 728 XXX XXX" readOnly className="mt-1 bg-muted" />
+                <Input value={user?.phone ?? ""} readOnly className="mt-1 bg-muted" />
               </div>
             )}
+            {method === "card" && (
+              <div className="space-y-3">
+                <div>
+                  <label className="text-sm font-medium text-foreground">Card Number</label>
+                  <Input placeholder="XXXX XXXX XXXX XXXX" value={cardForm.number} onChange={(e) => setCardForm({ ...cardForm, number: e.target.value })} className="mt-1" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-sm font-medium text-foreground">Expiry</label>
+                    <Input placeholder="MM/YY" value={cardForm.expiry} onChange={(e) => setCardForm({ ...cardForm, expiry: e.target.value })} className="mt-1" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground">CVV</label>
+                    <Input type="password" placeholder="***" maxLength={4} value={cardForm.cvv} onChange={(e) => setCardForm({ ...cardForm, cvv: e.target.value })} className="mt-1" />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground">Cardholder Name</label>
+                  <Input placeholder="Name on card" value={cardForm.name} onChange={(e) => setCardForm({ ...cardForm, name: e.target.value })} className="mt-1" />
+                </div>
+              </div>
+            )}
+            {amount && <p className="text-xs text-muted-foreground">M-Pesa service fee: <span className="text-destructive">KES {serviceFee.toFixed(2)}</span></p>}
             <Button onClick={() => setStep("confirm")} disabled={!amount} className="w-full">Continue</Button>
           </Card>
         )}
 
         {step === "confirm" && (
           <Card className="p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-foreground">Confirm Deposit</h3>
+            <h3 className="text-lg font-semibold text-foreground">Confirm Load Wallet</h3>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-muted-foreground">Method</span><span className="font-medium">{method === "mpesa" ? "M-Pesa" : "Wallet"}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Method</span><span className="font-medium">{method === "mpesa" ? "M-Pesa" : method === "pesapal" ? "PesaPal" : "Card"}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Amount</span><span className="font-medium">KES {amount}.00</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Fee</span><span className="font-medium">KES 0.00</span></div>
-              <div className="flex justify-between border-t border-border pt-2"><span className="font-semibold">Total</span><span className="font-bold text-primary">KES {amount}.00</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Service Fee</span><span className="font-medium text-destructive">KES {serviceFee.toFixed(2)}</span></div>
+              <div className="flex justify-between border-t border-border pt-2"><span className="font-semibold">Total</span><span className="font-bold text-primary">KES {(Number(amount) + serviceFee).toFixed(2)}</span></div>
             </div>
             <div className="flex gap-3">
               <Button variant="outline" onClick={() => setStep("form")} className="flex-1">Back</Button>

@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 const demoUsers = [
-  { id: "USR-001", name: "Alice Kamau", phone: "+254 712 345 678", walletId: "WAL-2026-4829-7183", kyc: "Approved", balance: "KES 15,300.00", status: "Active" },
-  { id: "USR-002", name: "Grace Wanjiku", phone: "+254 733 456 789", walletId: "WAL-2026-5930-8294", kyc: "Pending", balance: "KES 2,100.00", status: "Active" },
-  { id: "USR-003", name: "Peter Ochieng", phone: "+254 722 111 222", walletId: "WAL-2026-6041-9305", kyc: "Approved", balance: "KES 45,000.00", status: "Active" },
-  { id: "USR-004", name: "Sarah Mutua", phone: "+254 711 333 444", walletId: "WAL-2026-7152-0416", kyc: "Rejected", balance: "KES 0.00", status: "Frozen" },
+  { id: "USR-001", name: "Purity Musembi", phone: "0717562660", walletId: "7770001", kyc: "Approved", balance: "KES 15,300.00", status: "Active" },
+  { id: "USR-002", name: "Grace Wanjiku", phone: "0733456789", walletId: "7770002", kyc: "Pending", balance: "KES 2,100.00", status: "Active" },
+  { id: "USR-003", name: "Alice Kamau", phone: "0712345678", walletId: "7770003", kyc: "Approved", balance: "KES 45,000.00", status: "Active" },
+  { id: "USR-004", name: "Sarah Mutua", phone: "0711333444", walletId: "7770004", kyc: "Rejected", balance: "KES 0.00", status: "Frozen" },
 ];
 
 const AdminUsersPage = () => {
@@ -45,7 +45,7 @@ const AdminUsersPage = () => {
                     <Badge variant={u.status === "Active" ? "default" : "destructive"} className="text-xs">{u.status}</Badge>
                   </td>
                   <td className="p-3 text-center">
-                    <div className="flex gap-1 justify-center">
+                    <div className="flex gap-1 justify-center flex-wrap">
                       {u.kyc === "Pending" && <Button size="sm" variant="outline" className="text-xs h-7">Approve KYC</Button>}
                       {u.status === "Active" ? (
                         <Button size="sm" variant="outline" className="text-xs h-7 text-destructive">Freeze</Button>

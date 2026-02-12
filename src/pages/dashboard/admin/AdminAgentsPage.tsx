@@ -5,9 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 const demoAgents = [
-  { id: "AGT-0042", name: "James Mwangi", phone: "+254 728 123 456", commission: "KES 12,450.00", status: "Active" },
-  { id: "AGT-0043", name: "Faith Nyambura", phone: "+254 734 567 890", commission: "KES 8,200.00", status: "Active" },
-  { id: "AGT-0044", name: "David Kiprop", phone: "+254 721 234 567", commission: "KES 3,100.00", status: "Suspended" },
+  { id: "AGT-0042", name: "Ethan Khisa", phone: "0793923427", walletId: "8880001", commission: "KES 12,450.00", status: "Active" },
+  { id: "AGT-0043", name: "Faith Nyambura", phone: "0734567890", walletId: "8880002", commission: "KES 8,200.00", status: "Active" },
+  { id: "AGT-0044", name: "David Kiprop", phone: "0721234567", walletId: "8880003", commission: "KES 3,100.00", status: "Suspended" },
 ];
 
 const AdminAgentsPage = () => {
@@ -22,6 +22,7 @@ const AdminAgentsPage = () => {
                 <th className="text-left p-3 font-medium text-muted-foreground">Agent ID</th>
                 <th className="text-left p-3 font-medium text-muted-foreground">Name</th>
                 <th className="text-left p-3 font-medium text-muted-foreground">Phone</th>
+                <th className="text-left p-3 font-medium text-muted-foreground">Wallet ID</th>
                 <th className="text-right p-3 font-medium text-muted-foreground">Commission</th>
                 <th className="text-center p-3 font-medium text-muted-foreground">Status</th>
                 <th className="text-center p-3 font-medium text-muted-foreground">Actions</th>
@@ -33,6 +34,7 @@ const AdminAgentsPage = () => {
                   <td className="p-3 font-mono text-xs">{a.id}</td>
                   <td className="p-3 font-medium">{a.name}</td>
                   <td className="p-3 text-muted-foreground">{a.phone}</td>
+                  <td className="p-3 font-mono text-xs">{a.walletId}</td>
                   <td className="p-3 text-right font-medium text-success">{a.commission}</td>
                   <td className="p-3 text-center">
                     <Badge variant={a.status === "Active" ? "default" : "destructive"} className="text-xs">{a.status}</Badge>

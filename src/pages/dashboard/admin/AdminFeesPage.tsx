@@ -4,20 +4,25 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-const demoFees = [
+const initialFees = [
   { type: "Deposit", flat: "0.00", percent: "0%", min: "100", max: "150,000" },
   { type: "Withdrawal", flat: "30.00", percent: "1%", min: "50", max: "70,000" },
   { type: "Transfer", flat: "25.00", percent: "1%", min: "100", max: "100,000" },
   { type: "Send Money", flat: "15.00", percent: "0.5%", min: "10", max: "70,000" },
+  { type: "Airtime", flat: "0.00", percent: "0%", min: "10", max: "10,000" },
   { type: "Statement Download", flat: "50.00", percent: "0%", min: "-", max: "-" },
   { type: "Agent Commission", flat: "0.00", percent: "2%", min: "-", max: "-" },
+  { type: "M-Pesa Service Fee", flat: "0.40", percent: "0%", min: "-", max: "-" },
 ];
 
 const AdminFeesPage = () => {
+  const [fees] = useState(initialFees);
+
   return (
     <DashboardLayout role="admin">
       <div className="max-w-4xl mx-auto space-y-6">
         <h2 className="text-2xl font-bold text-foreground">Fees & Charges</h2>
+        <p className="text-sm text-muted-foreground">All transaction charges are configurable. M-Pesa service fee of KES 0.40 applies per user transaction.</p>
         <Card className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -31,7 +36,7 @@ const AdminFeesPage = () => {
               </tr>
             </thead>
             <tbody>
-              {demoFees.map((f) => (
+              {fees.map((f) => (
                 <tr key={f.type} className="border-b border-border last:border-0">
                   <td className="p-3 font-medium">{f.type}</td>
                   <td className="p-3 text-right">{f.flat}</td>

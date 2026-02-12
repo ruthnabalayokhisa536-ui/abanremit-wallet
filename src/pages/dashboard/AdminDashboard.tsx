@@ -4,9 +4,11 @@ import { useNavigate } from "react-router-dom";
 import { Users, Shield, BarChart3, Settings, Wallet, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import DashboardLayout from "@/components/DashboardLayout";
+import { getLoggedInUser } from "@/lib/test-accounts";
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
+  const user = getLoggedInUser();
 
   const stats = [
     { label: "Total System Balance", value: "KES 4,250,000.00", icon: Wallet, color: "text-primary" },
@@ -28,6 +30,7 @@ const AdminDashboard = () => {
     <DashboardLayout role="admin">
       <div className="max-w-6xl mx-auto space-y-6">
         <h2 className="text-2xl font-bold text-foreground">Admin Dashboard</h2>
+        {user && <p className="text-sm text-muted-foreground">Welcome, {user.name}</p>}
         <div className="grid md:grid-cols-4 gap-4">
           {stats.map((s) => (
             <Card key={s.label} className="p-4">
