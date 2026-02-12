@@ -10,14 +10,13 @@ import { getLoggedInUser } from "@/lib/test-accounts";
 
 type Step = "form" | "confirm" | "pin" | "receipt";
 
-const AgentTransferPage = () => {
+const AgentTransferPhonePage = () => {
   const [step, setStep] = useState<Step>("form");
-  const [walletId, setWalletId] = useState("");
+  const [phone, setPhone] = useState("");
   const [amount, setAmount] = useState("");
   const user = getLoggedInUser();
-
-  const fee = Math.max(25, Number(amount) * 0.01);
-  const handleDone = () => { setStep("form"); setWalletId(""); setAmount(""); };
+  const fee = Math.max(15, Number(amount) * 0.005);
+  const handleDone = () => { setStep("form"); setPhone(""); setAmount(""); };
 
   if (step === "pin") {
     return (
@@ -34,16 +33,15 @@ const AgentTransferPage = () => {
       <DashboardLayout role="agent">
         <div className="max-w-md mx-auto">
           <ReceiptScreen
-            title="Transfer Successful"
-            message={`KES ${amount}.00 transferred to user wallet ${walletId}.`}
+            title="Transfer to Phone Successful"
+            message={`KES ${amount}.00 sent to ${phone}.`}
             items={[
-              { label: "Transaction ID", value: "TXN20260212TRF" },
-              { label: "Recipient", value: "Alice Kamau" },
-              { label: "Wallet ID", value: walletId },
+              { label: "Transaction ID", value: "TXN20260212PHN" },
+              { label: "Recipient", value: "Peter Ochieng" },
+              { label: "Phone", value: phone },
               { label: "Amount", value: `KES ${amount}.00` },
               { label: "Fee", value: `KES ${fee.toFixed(2)}` },
-              { label: "Commission Earned", value: `KES ${(Number(amount) * 0.02).toFixed(2)}` },
-              { label: "Agent Balance", value: `KES ${((user?.balance ?? 245800) - Number(amount) - fee).toLocaleString()}.00` },
+              { label: "Your Balance", value: `KES ${((user?.balance ?? 245800) - Number(amount) - fee).toLocaleString()}.00` },
               { label: "Date", value: new Date().toLocaleString() },
             ]}
             onDone={handleDone}
@@ -58,11 +56,11 @@ const AgentTransferPage = () => {
       <DashboardLayout role="agent">
         <div className="max-w-md mx-auto">
           <AccountConfirmation
-            title="Confirm Transfer to User Wallet"
+            title="Confirm Send to Phone"
             details={[
-              { label: "Recipient Name", value: "Alice Kamau" },
-              { label: "Wallet ID", value: walletId },
-              { label: "Phone", value: "+254 712 345 678" },
+              { label: "Recipient Name", value: "Peter Ochieng" },
+              { label: "M-Pesa Name", value: "PETER OCHIENG ONYANGO" },
+              { label: "Phone", value: phone },
             ]}
             amount={amount}
             fee={fee.toFixed(2)}
@@ -77,22 +75,22 @@ const AgentTransferPage = () => {
   return (
     <DashboardLayout role="agent">
       <div className="max-w-md mx-auto space-y-6">
-        <h2 className="text-2xl font-bold text-foreground">Send to User Wallet</h2>
+        <h2 className="text-2xl font-bold text-foreground">Send to Phone</h2>
         <Card className="p-6 space-y-4">
           <div>
-            <label className="text-sm font-medium text-foreground">User Wallet Number</label>
-            <Input placeholder="777XXXX" value={walletId} onChange={(e) => setWalletId(e.target.value)} className="mt-1" />
+            <label className="text-sm font-medium text-foreground">Recipient Phone Number</label>
+            <Input type="tel" placeholder="07XX XXX XXX" value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1" />
           </div>
           <div>
             <label className="text-sm font-medium text-foreground">Amount (KES)</label>
             <Input type="number" placeholder="Enter amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="mt-1" />
           </div>
           {amount && <p className="text-sm text-muted-foreground">Fee: <span className="text-destructive">KES {fee.toFixed(2)}</span></p>}
-          <Button onClick={() => setStep("confirm")} disabled={!walletId || !amount} className="w-full">Continue</Button>
+          <Button onClick={() => setStep("confirm")} disabled={!phone || !amount} className="w-full">Continue</Button>
         </Card>
       </div>
     </DashboardLayout>
   );
 };
 
-export default AgentTransferPage;
+export default AgentTransferPhonePage;

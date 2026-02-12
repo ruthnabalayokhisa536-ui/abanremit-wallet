@@ -2,12 +2,14 @@ import React, { useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import PinInput from "@/components/PinInput";
+import { getLoggedInUser } from "@/lib/test-accounts";
 
 const ProfilePage = () => {
   const [showPinSetup, setShowPinSetup] = useState(false);
   const [pinSet, setPinSet] = useState(false);
+  const user = getLoggedInUser();
 
   if (showPinSetup) {
     return (
@@ -26,28 +28,54 @@ const ProfilePage = () => {
   return (
     <DashboardLayout role="user">
       <div className="max-w-md mx-auto space-y-6">
-        <h2 className="text-2xl font-bold text-foreground">Profile</h2>
+        <h2 className="text-2xl font-bold text-foreground">Profile & KYC</h2>
 
         <Card className="p-6 space-y-4">
           <div>
             <label className="text-sm font-medium text-muted-foreground">Full Name</label>
-            <p className="text-foreground font-medium">John Doe</p>
+            <p className="text-foreground font-medium">{user?.name ?? "User"}</p>
           </div>
           <div>
             <label className="text-sm font-medium text-muted-foreground">Phone Number</label>
-            <p className="text-foreground font-medium">+254 728 XXX XXX</p>
+            <p className="text-foreground font-medium">{user?.phone ?? ""}</p>
           </div>
           <div>
             <label className="text-sm font-medium text-muted-foreground">Email</label>
-            <p className="text-foreground font-medium">john@example.com</p>
+            <p className="text-foreground font-medium">{user?.email ?? "-"}</p>
           </div>
           <div>
             <label className="text-sm font-medium text-muted-foreground">Wallet ID</label>
-            <p className="text-foreground font-mono text-sm">WAL-2026-4829-7183</p>
+            <p className="text-foreground font-mono text-sm">{user?.walletId ?? ""}</p>
           </div>
           <div>
             <label className="text-sm font-medium text-muted-foreground">KYC Status</label>
-            <span className="inline-block mt-1 px-2 py-1 rounded text-xs font-medium bg-success/10 text-success">Approved</span>
+            <div className="mt-1">
+              <Badge
+                variant={user?.kycStatus === "approved" ? "default" : user?.kycStatus === "pending" ? "secondary" : "destructive"}
+              >
+                {user?.kycStatus ? user.kycStatus.charAt(0).toUpperCase() + user.kycStatus.slice(1) : "Pending"}
+              </Badge>
+            </div>
+          </div>
+        </Card>
+
+        {/* KYC Upload Section */}
+        <Card className="p-6 space-y-4">
+          <h3 className="text-lg font-semibold text-foreground">KYC Documents</h3>
+          <p className="text-sm text-muted-foreground">Upload your documents for verification. Required: Live selfie + National ID (front & back).</p>
+          <div className="space-y-3">
+            <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
+              <p className="text-sm text-muted-foreground">📸 Live Selfie</p>
+              <Button variant="outline" size="sm" className="mt-2">Upload</Button>
+            </div>
+            <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
+              <p className="text-sm text-muted-foreground">🪪 National ID (Front)</p>
+              <Button variant="outline" size="sm" className="mt-2">Upload</Button>
+            </div>
+            <div className="border-2 border-dashed border-border rounded-lg p-4 text-center">
+              <p className="text-sm text-muted-foreground">🪪 National ID (Back)</p>
+              <Button variant="outline" size="sm" className="mt-2">Upload</Button>
+            </div>
           </div>
         </Card>
 

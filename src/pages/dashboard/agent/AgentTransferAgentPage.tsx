@@ -10,12 +10,11 @@ import { getLoggedInUser } from "@/lib/test-accounts";
 
 type Step = "form" | "confirm" | "pin" | "receipt";
 
-const AgentTransferPage = () => {
+const AgentTransferAgentPage = () => {
   const [step, setStep] = useState<Step>("form");
   const [walletId, setWalletId] = useState("");
   const [amount, setAmount] = useState("");
   const user = getLoggedInUser();
-
   const fee = Math.max(25, Number(amount) * 0.01);
   const handleDone = () => { setStep("form"); setWalletId(""); setAmount(""); };
 
@@ -34,16 +33,15 @@ const AgentTransferPage = () => {
       <DashboardLayout role="agent">
         <div className="max-w-md mx-auto">
           <ReceiptScreen
-            title="Transfer Successful"
-            message={`KES ${amount}.00 transferred to user wallet ${walletId}.`}
+            title="Transfer to Agent Successful"
+            message={`KES ${amount}.00 transferred to agent wallet ${walletId}.`}
             items={[
-              { label: "Transaction ID", value: "TXN20260212TRF" },
-              { label: "Recipient", value: "Alice Kamau" },
-              { label: "Wallet ID", value: walletId },
+              { label: "Transaction ID", value: "TXN20260212AGT" },
+              { label: "Recipient Agent", value: "Faith Nyambura" },
+              { label: "Agent Wallet", value: walletId },
               { label: "Amount", value: `KES ${amount}.00` },
               { label: "Fee", value: `KES ${fee.toFixed(2)}` },
-              { label: "Commission Earned", value: `KES ${(Number(amount) * 0.02).toFixed(2)}` },
-              { label: "Agent Balance", value: `KES ${((user?.balance ?? 245800) - Number(amount) - fee).toLocaleString()}.00` },
+              { label: "Your Balance", value: `KES ${((user?.balance ?? 245800) - Number(amount) - fee).toLocaleString()}.00` },
               { label: "Date", value: new Date().toLocaleString() },
             ]}
             onDone={handleDone}
@@ -58,11 +56,11 @@ const AgentTransferPage = () => {
       <DashboardLayout role="agent">
         <div className="max-w-md mx-auto">
           <AccountConfirmation
-            title="Confirm Transfer to User Wallet"
+            title="Confirm Transfer to Agent"
             details={[
-              { label: "Recipient Name", value: "Alice Kamau" },
-              { label: "Wallet ID", value: walletId },
-              { label: "Phone", value: "+254 712 345 678" },
+              { label: "Agent Name", value: "Faith Nyambura" },
+              { label: "Agent Wallet ID", value: walletId },
+              { label: "Agent ID", value: "AGT-0043" },
             ]}
             amount={amount}
             fee={fee.toFixed(2)}
@@ -77,11 +75,11 @@ const AgentTransferPage = () => {
   return (
     <DashboardLayout role="agent">
       <div className="max-w-md mx-auto space-y-6">
-        <h2 className="text-2xl font-bold text-foreground">Send to User Wallet</h2>
+        <h2 className="text-2xl font-bold text-foreground">Send to Agent Wallet</h2>
         <Card className="p-6 space-y-4">
           <div>
-            <label className="text-sm font-medium text-foreground">User Wallet Number</label>
-            <Input placeholder="777XXXX" value={walletId} onChange={(e) => setWalletId(e.target.value)} className="mt-1" />
+            <label className="text-sm font-medium text-foreground">Agent Wallet Number</label>
+            <Input placeholder="888XXXX" value={walletId} onChange={(e) => setWalletId(e.target.value)} className="mt-1" />
           </div>
           <div>
             <label className="text-sm font-medium text-foreground">Amount (KES)</label>
@@ -95,4 +93,4 @@ const AgentTransferPage = () => {
   );
 };
 
-export default AgentTransferPage;
+export default AgentTransferAgentPage;

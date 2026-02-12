@@ -22,6 +22,9 @@ import AgentDashboard from "./pages/dashboard/AgentDashboard";
 import AgentDepositPage from "./pages/dashboard/agent/AgentDepositPage";
 import AgentWithdrawPage from "./pages/dashboard/agent/AgentWithdrawPage";
 import AgentTransferPage from "./pages/dashboard/agent/AgentTransferPage";
+import AgentTransferAgentPage from "./pages/dashboard/agent/AgentTransferAgentPage";
+import AgentTransferPhonePage from "./pages/dashboard/agent/AgentTransferPhonePage";
+import AgentSellAirtimePage from "./pages/dashboard/agent/AgentSellAirtimePage";
 import AgentCommissionsPage from "./pages/dashboard/agent/AgentCommissionsPage";
 import AgentStatementsPage from "./pages/dashboard/agent/AgentStatementsPage";
 import AgentNotificationsPage from "./pages/dashboard/agent/AgentNotificationsPage";
@@ -63,6 +66,9 @@ const App = () => (
           <Route path="/agent/deposit" element={<AgentDepositPage />} />
           <Route path="/agent/withdraw" element={<AgentWithdrawPage />} />
           <Route path="/agent/transfer" element={<AgentTransferPage />} />
+          <Route path="/agent/transfer-agent" element={<AgentTransferAgentPage />} />
+          <Route path="/agent/transfer-phone" element={<AgentTransferPhonePage />} />
+          <Route path="/agent/sell-airtime" element={<AgentSellAirtimePage />} />
           <Route path="/agent/commissions" element={<AgentCommissionsPage />} />
           <Route path="/agent/statements" element={<AgentStatementsPage />} />
           <Route path="/agent/notifications" element={<AgentNotificationsPage />} />
@@ -72,6 +78,7 @@ const App = () => (
           <Route path="/admin/users" element={<AdminUsersPage />} />
           <Route path="/admin/agents" element={<AdminAgentsPage />} />
           <Route path="/admin/transactions" element={<AdminTransactionsPage />} />
+          <Route path="/admin/transactions/:tab" element={<AdminTransactionsPage />} />
           <Route path="/admin/fees" element={<AdminFeesPage />} />
           <Route path="/admin/actions" element={<AdminActionsPage />} />
           <Route path="/admin/audit" element={<AdminAuditPage />} />

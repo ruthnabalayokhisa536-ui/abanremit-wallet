@@ -12,11 +12,12 @@ const Register = () => {
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
-    navigate("/dashboard");
+    // Registration will connect to backend API: POST /api/register
+    navigate("/login");
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-primary/5 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-primary/5 p-4 bg-cover bg-center" style={{ backgroundImage: "linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url('/hero-bg.jpg')" }}>
       <Card className="w-full max-w-md p-8">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-primary">AbanRemit</h1>
@@ -29,7 +30,7 @@ const Register = () => {
           </div>
           <div>
             <label className="text-sm font-medium text-foreground">Phone Number</label>
-            <Input type="tel" placeholder="+254 7XX XXX XXX" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1" />
+            <Input type="tel" placeholder="07XX XXX XXX" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} className="mt-1" />
           </div>
           <div>
             <label className="text-sm font-medium text-foreground">Email (Optional)</label>

@@ -10,13 +10,15 @@ import { getLoggedInUser } from "@/lib/test-accounts";
 
 type Step = "form" | "confirm" | "pin" | "receipt";
 
-const AgentWithdrawPage = () => {
+const airtimeAmounts = [50, 100, 200, 500, 1000, 2000];
+
+const AgentSellAirtimePage = () => {
   const [step, setStep] = useState<Step>("form");
-  const [amount, setAmount] = useState("");
+  const [phone, setPhone] = useState("");
+  const [amount, setAmount] = useState(0);
   const user = getLoggedInUser();
 
-  const fee = Math.max(50, Number(amount) * 0.015);
-  const handleDone = () => { setStep("form"); setAmount(""); };
+  const handleDone = () => { setStep("form"); setPhone(""); setAmount(0); };
 
   if (step === "pin") {
     return (
@@ -33,16 +35,15 @@ const AgentWithdrawPage = () => {
       <DashboardLayout role="agent">
         <div className="max-w-md mx-auto">
           <ReceiptScreen
-            title="Withdrawal Successful"
-            message={`KES ${amount}.00 withdrawn to M-Pesa.`}
+            title="Airtime Sold Successfully"
+            message={`KES ${amount}.00 airtime sent to ${phone}.`}
             items={[
-              { label: "Transaction ID", value: "TXN20260212WDR" },
-              { label: "Method", value: "M-Pesa" },
-              { label: "M-Pesa Name", value: user?.name ?? "Agent" },
-              { label: "Phone", value: user?.phone ?? "" },
+              { label: "Transaction ID", value: "TXN20260212AIR" },
+              { label: "Customer Phone", value: phone },
               { label: "Amount", value: `KES ${amount}.00` },
-              { label: "Fee", value: `KES ${fee.toFixed(2)}` },
-              { label: "Agent Balance", value: `KES ${((user?.balance ?? 245800) - Number(amount) - fee).toLocaleString()}.00` },
+              { label: "Commission Earned", value: `KES ${(amount * 0.03).toFixed(2)}` },
+              { label: "Agent", value: user?.name ?? "Agent" },
+              { label: "Agent Balance", value: `KES ${((user?.balance ?? 245800) - amount).toLocaleString()}.00` },
               { label: "Date", value: new Date().toLocaleString() },
             ]}
             onDone={handleDone}
@@ -57,13 +58,13 @@ const AgentWithdrawPage = () => {
       <DashboardLayout role="agent">
         <div className="max-w-md mx-auto">
           <AccountConfirmation
-            title="Confirm Withdrawal to M-Pesa"
+            title="Confirm Airtime Sale"
             details={[
-              { label: "M-Pesa Name", value: user?.name ?? "Agent" },
-              { label: "Phone", value: user?.phone ?? "" },
+              { label: "Customer Phone", value: phone },
+              { label: "M-Pesa Name", value: "Grace Wanjiku" },
             ]}
-            amount={amount}
-            fee={fee.toFixed(2)}
+            amount={String(amount)}
+            fee="0.00"
             onConfirm={() => setStep("pin")}
             onCancel={() => setStep("form")}
           />
@@ -75,22 +76,27 @@ const AgentWithdrawPage = () => {
   return (
     <DashboardLayout role="agent">
       <div className="max-w-md mx-auto space-y-6">
-        <h2 className="text-2xl font-bold text-foreground">Withdraw to M-Pesa</h2>
+        <h2 className="text-2xl font-bold text-foreground">Sell Airtime</h2>
         <Card className="p-6 space-y-4">
           <div>
-            <label className="text-sm font-medium text-foreground">M-Pesa Number</label>
-            <Input value={user?.phone ?? ""} readOnly className="mt-1 bg-muted" />
+            <label className="text-sm font-medium text-foreground">Customer Phone Number</label>
+            <Input type="tel" placeholder="07XX XXX XXX" value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1" />
           </div>
           <div>
-            <label className="text-sm font-medium text-foreground">Amount (KES)</label>
-            <Input type="number" placeholder="Enter amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="mt-1" />
+            <label className="text-sm font-medium text-foreground mb-2 block">Select Amount</label>
+            <div className="grid grid-cols-3 gap-2">
+              {airtimeAmounts.map((a) => (
+                <Button key={a} variant={amount === a ? "default" : "outline"} onClick={() => setAmount(a)} className="h-12">
+                  KES {a}
+                </Button>
+              ))}
+            </div>
           </div>
-          {amount && <p className="text-sm text-muted-foreground">Fee: <span className="text-destructive">KES {fee.toFixed(2)}</span></p>}
-          <Button onClick={() => setStep("confirm")} disabled={!amount} className="w-full">Continue</Button>
+          <Button onClick={() => setStep("confirm")} disabled={!phone || !amount} className="w-full">Continue</Button>
         </Card>
       </div>
     </DashboardLayout>
   );
 };
 
-export default AgentWithdrawPage;
+export default AgentSellAirtimePage;
