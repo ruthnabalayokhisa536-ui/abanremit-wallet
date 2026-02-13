@@ -6,14 +6,17 @@ import { Input } from "@/components/ui/input";
 import PinInput from "@/components/PinInput";
 import ReceiptScreen from "@/components/ReceiptScreen";
 import AccountConfirmation from "@/components/AccountConfirmation";
-import { getLoggedInUser } from "@/lib/test-accounts";
+import { useWallet } from "@/hooks/use-wallet";
+import { useProfile } from "@/hooks/use-profile";
 
 type Step = "form" | "confirm" | "pin" | "receipt";
 
 const AgentWithdrawPage = () => {
   const [step, setStep] = useState<Step>("form");
   const [amount, setAmount] = useState("");
-  const user = getLoggedInUser();
+  const [txId, setTxId] = useState("");
+  const { wallet } = useWallet();
+  const { profile } = useProfile();
 
   const fee = Math.max(50, Number(amount) * 0.015);
   const handleDone = () => { setStep("form"); setAmount(""); };
@@ -22,7 +25,7 @@ const AgentWithdrawPage = () => {
     return (
       <DashboardLayout role="agent">
         <div className="max-w-md mx-auto">
-          <PinInput onSubmit={() => setStep("receipt")} onCancel={() => setStep("confirm")} title="Enter Agent PIN" />
+          <PinInput onSubmit={() => { setTxId("TXN-" + Date.now().toString(36).toUpperCase()); setStep("receipt"); }} onCancel={() => setStep("confirm")} title="Enter Agent PIN" />
         </div>
       </DashboardLayout>
     );
@@ -34,15 +37,13 @@ const AgentWithdrawPage = () => {
         <div className="max-w-md mx-auto">
           <ReceiptScreen
             title="Withdrawal Successful"
-            message={`KES ${amount}.00 withdrawn to M-Pesa.`}
+            message={`ABANREMIT: Confirmed. KES ${amount}.00 withdrawn to M-Pesa. Wallet ${wallet?.wallet_id || "—"}. Ref ${txId}.`}
             items={[
-              { label: "Transaction ID", value: "TXN20260212WDR" },
+              { label: "Transaction ID", value: txId },
               { label: "Method", value: "M-Pesa" },
-              { label: "M-Pesa Name", value: user?.name ?? "Agent" },
-              { label: "Phone", value: user?.phone ?? "" },
               { label: "Amount", value: `KES ${amount}.00` },
               { label: "Fee", value: `KES ${fee.toFixed(2)}` },
-              { label: "Agent Balance", value: `KES ${((user?.balance ?? 245800) - Number(amount) - fee).toLocaleString()}.00` },
+              { label: "Agent Balance", value: `KES ${((wallet?.balance ?? 0) - Number(amount) - fee).toLocaleString(undefined, { minimumFractionDigits: 2 })}` },
               { label: "Date", value: new Date().toLocaleString() },
             ]}
             onDone={handleDone}
@@ -58,10 +59,7 @@ const AgentWithdrawPage = () => {
         <div className="max-w-md mx-auto">
           <AccountConfirmation
             title="Confirm Withdrawal to M-Pesa"
-            details={[
-              { label: "M-Pesa Name", value: user?.name ?? "Agent" },
-              { label: "Phone", value: user?.phone ?? "" },
-            ]}
+            details={[{ label: "M-Pesa Name", value: profile?.full_name ?? "Agent" }, { label: "Phone", value: profile?.phone ?? "—" }]}
             amount={amount}
             fee={fee.toFixed(2)}
             onConfirm={() => setStep("pin")}
@@ -79,7 +77,7 @@ const AgentWithdrawPage = () => {
         <Card className="p-6 space-y-4">
           <div>
             <label className="text-sm font-medium text-foreground">M-Pesa Number</label>
-            <Input value={user?.phone ?? ""} readOnly className="mt-1 bg-muted" />
+            <Input value={profile?.phone ?? ""} readOnly className="mt-1 bg-muted" />
           </div>
           <div>
             <label className="text-sm font-medium text-foreground">Amount (KES)</label>

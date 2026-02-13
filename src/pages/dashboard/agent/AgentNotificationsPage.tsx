@@ -1,26 +1,47 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card } from "@/components/ui/card";
-
-const demoNotifications = [
-  { id: 1, message: "TXN20260211030 Confirmed. KES 8,000.00 deposited to Alice Kamau (WAL-2026-4829-7183). Commission: KES 160.00. Agent Balance: KES 245,800.00.", time: "2 hours ago", read: false },
-  { id: 2, message: "TXN20260210019 Confirmed. KES 5,000.00 transferred to Mary Njeri. Fee: KES 50.00. Commission: KES 100.00.", time: "Yesterday", read: false },
-  { id: 3, message: "TXN20260209010 Confirmed. KES 3,000.00 deposited to Peter Ochieng. Commission: KES 60.00.", time: "2 days ago", read: true },
-];
+import { Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const AgentNotificationsPage = () => {
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetch = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(50);
+      setNotifications(data || []);
+      setLoading(false);
+    };
+    fetch();
+  }, []);
+
   return (
     <DashboardLayout role="agent">
       <div className="max-w-2xl mx-auto space-y-6">
         <h2 className="text-2xl font-bold text-foreground">Notifications</h2>
-        <div className="space-y-2">
-          {demoNotifications.map((n) => (
-            <Card key={n.id} className={`p-4 ${!n.read ? "border-primary/30 bg-primary/5" : ""}`}>
-              <p className="text-sm text-foreground">{n.message}</p>
-              <p className="text-xs text-muted-foreground mt-2">{n.time}</p>
-            </Card>
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+        ) : notifications.length === 0 ? (
+          <Card className="p-8 text-center"><p className="text-muted-foreground">No notifications yet.</p></Card>
+        ) : (
+          <div className="space-y-2">
+            {notifications.map((n) => (
+              <Card key={n.id} className={`p-4 ${!n.read ? "border-primary/30 bg-primary/5" : ""}`}>
+                <p className="text-sm text-foreground">{n.message}</p>
+                <p className="text-xs text-muted-foreground mt-2">{new Date(n.created_at).toLocaleString()}</p>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );

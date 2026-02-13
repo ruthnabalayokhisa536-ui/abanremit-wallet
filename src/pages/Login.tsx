@@ -1,31 +1,51 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Eye, EyeOff } from "lucide-react";
-import { authenticateUser, setLoggedInUser } from "@/lib/test-accounts";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { useRole } from "@/hooks/use-role";
 
 const Login = () => {
-  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
+  const { user, loading: authLoading, signIn } = useAuth();
+  const { role, loading: roleLoading } = useRole();
 
-  const handleLogin = (e: React.FormEvent) => {
+  // Redirect if already logged in and role is known
+  useEffect(() => {
+    if (user && !roleLoading && role) {
+      if (role === "admin") navigate("/admin", { replace: true });
+      else if (role === "agent") navigate("/agent", { replace: true });
+      else navigate("/dashboard", { replace: true });
+    }
+  }, [user, role, roleLoading, navigate]);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    const user = authenticateUser(phone, password);
-    if (!user) {
-      setError("Invalid phone number or password.");
-      return;
+    setSubmitting(true);
+    try {
+      await signIn(email, password);
+    } catch (err: any) {
+      setError(err.message || "Invalid credentials.");
+    } finally {
+      setSubmitting(false);
     }
-    setLoggedInUser(user);
-    if (user.role === "admin") navigate("/admin");
-    else if (user.role === "agent") navigate("/agent");
-    else navigate("/dashboard");
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-primary/5 p-4 bg-cover bg-center" style={{ backgroundImage: "linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url('/hero-bg.jpg')" }}>
@@ -39,13 +59,14 @@ const Login = () => {
             <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm text-center">{error}</div>
           )}
           <div>
-            <label className="text-sm font-medium text-foreground">Phone Number</label>
+            <label className="text-sm font-medium text-foreground">Email</label>
             <Input
-              type="tel"
-              placeholder="07XX XXX XXX"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="mt-1"
+              required
             />
           </div>
           <div>
@@ -56,6 +77,7 @@ const Login = () => {
                 placeholder="Enter password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                required
               />
               <button
                 type="button"
@@ -66,7 +88,10 @@ const Login = () => {
               </button>
             </div>
           </div>
-          <Button type="submit" className="w-full">Sign In</Button>
+          <Button type="submit" className="w-full" disabled={submitting}>
+            {submitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+            Sign In
+          </Button>
         </form>
         <p className="text-sm text-center text-muted-foreground mt-6">
           Don't have an account? <Link to="/register" className="text-primary font-medium hover:underline">Register</Link>

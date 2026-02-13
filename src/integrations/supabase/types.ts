@@ -86,6 +86,96 @@ export type Database = {
         }
         Relationships: []
       }
+      airtime_networks: {
+        Row: {
+          code: string
+          commission_rate: number
+          created_at: string
+          enabled: boolean
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          commission_rate?: number
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          commission_rate?: number
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      airtime_transactions: {
+        Row: {
+          agent_id: string | null
+          amount: number
+          commission: number
+          created_at: string
+          fee: number
+          id: string
+          network_id: string
+          phone_number: string
+          status: string
+          transaction_id: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          agent_id?: string | null
+          amount: number
+          commission?: number
+          created_at?: string
+          fee?: number
+          id?: string
+          network_id: string
+          phone_number: string
+          status?: string
+          transaction_id?: string
+          type?: string
+          user_id: string
+        }
+        Update: {
+          agent_id?: string | null
+          amount?: number
+          commission?: number
+          created_at?: string
+          fee?: number
+          id?: string
+          network_id?: string
+          phone_number?: string
+          status?: string
+          transaction_id?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "airtime_transactions_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "airtime_transactions_network_id_fkey"
+            columns: ["network_id"]
+            isOneToOne: false
+            referencedRelation: "airtime_networks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -107,6 +197,39 @@ export type Database = {
           created_at?: string
           id?: string
           metadata?: Json | null
+        }
+        Relationships: []
+      }
+      currencies: {
+        Row: {
+          code: string
+          created_at: string
+          enabled: boolean
+          id: string
+          is_default: boolean
+          name: string
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          is_default?: boolean
+          name: string
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          is_default?: boolean
+          name?: string
+          symbol?: string
+          updated_at?: string
         }
         Relationships: []
       }
@@ -227,6 +350,33 @@ export type Database = {
           phone?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      system_settings: {
+        Row: {
+          description: string | null
+          id: string
+          key: string
+          updated_at: string
+          updated_by: string | null
+          value: Json
+        }
+        Insert: {
+          description?: string | null
+          id?: string
+          key: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
+        }
+        Update: {
+          description?: string | null
+          id?: string
+          key?: string
+          updated_at?: string
+          updated_by?: string | null
+          value?: Json
         }
         Relationships: []
       }

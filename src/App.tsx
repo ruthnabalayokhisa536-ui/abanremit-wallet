@@ -33,8 +33,12 @@ import AgentNotificationsPage from "./pages/dashboard/agent/AgentNotificationsPa
 import AdminDashboard from "./pages/dashboard/AdminDashboard";
 import AdminUsersPage from "./pages/dashboard/admin/AdminUsersPage";
 import AdminAgentsPage from "./pages/dashboard/admin/AdminAgentsPage";
-import AdminTransactionsPage from "./pages/dashboard/admin/AdminTransactionsPage";
+import AdminTransactionListPage from "./pages/dashboard/admin/AdminTransactionListPage";
+import AdminStatementsPage from "./pages/dashboard/admin/AdminStatementsPage";
+import AdminReportsPage from "./pages/dashboard/admin/AdminReportsPage";
 import AdminFeesPage from "./pages/dashboard/admin/AdminFeesPage";
+import AdminCurrenciesPage from "./pages/dashboard/admin/AdminCurrenciesPage";
+import AdminAirtimePage from "./pages/dashboard/admin/AdminAirtimePage";
 import AdminActionsPage from "./pages/dashboard/admin/AdminActionsPage";
 import AdminAuditPage from "./pages/dashboard/admin/AdminAuditPage";
 
@@ -73,13 +77,18 @@ const App = () => (
           <Route path="/agent/statements" element={<AgentStatementsPage />} />
           <Route path="/agent/notifications" element={<AgentNotificationsPage />} />
 
-          {/* Admin routes */}
+          {/* Admin routes - separate transaction pages */}
           <Route path="/admin" element={<AdminDashboard />} />
           <Route path="/admin/users" element={<AdminUsersPage />} />
           <Route path="/admin/agents" element={<AdminAgentsPage />} />
-          <Route path="/admin/transactions" element={<AdminTransactionsPage />} />
-          <Route path="/admin/transactions/:tab" element={<AdminTransactionsPage />} />
+          <Route path="/admin/deposits" element={<AdminTransactionListPage type="deposit" />} />
+          <Route path="/admin/withdrawals" element={<AdminTransactionListPage type="withdrawal" />} />
+          <Route path="/admin/transfers" element={<AdminTransactionListPage type="transfer" />} />
+          <Route path="/admin/statements" element={<AdminStatementsPage />} />
+          <Route path="/admin/reports" element={<AdminReportsPage />} />
           <Route path="/admin/fees" element={<AdminFeesPage />} />
+          <Route path="/admin/currencies" element={<AdminCurrenciesPage />} />
+          <Route path="/admin/airtime" element={<AdminAirtimePage />} />
           <Route path="/admin/actions" element={<AdminActionsPage />} />
           <Route path="/admin/audit" element={<AdminAuditPage />} />
 
