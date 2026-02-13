@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import PinInput from "@/components/PinInput";
 import ReceiptScreen from "@/components/ReceiptScreen";
 import AccountConfirmation from "@/components/AccountConfirmation";
+import { useWallet } from "@/hooks/use-wallet";
 
 type Step = "form" | "confirm" | "pin" | "receipt";
 
@@ -13,6 +14,8 @@ const SendMoneyPage = () => {
   const [step, setStep] = useState<Step>("form");
   const [phone, setPhone] = useState("");
   const [amount, setAmount] = useState("");
+  const [txId, setTxId] = useState("");
+  const { wallet } = useWallet();
 
   const fee = Math.max(15, Number(amount) * 0.005);
   const handleDone = () => { setStep("form"); setPhone(""); setAmount(""); };
@@ -21,7 +24,7 @@ const SendMoneyPage = () => {
     return (
       <DashboardLayout role="user">
         <div className="max-w-md mx-auto">
-          <PinInput onSubmit={() => setStep("receipt")} onCancel={() => setStep("confirm")} />
+          <PinInput onSubmit={() => { setTxId("TXN-" + Date.now().toString(36).toUpperCase()); setStep("receipt"); }} onCancel={() => setStep("confirm")} />
         </div>
       </DashboardLayout>
     );
@@ -33,15 +36,14 @@ const SendMoneyPage = () => {
         <div className="max-w-md mx-auto">
           <ReceiptScreen
             title="Money Sent Successfully"
-            message={`KES ${amount}.00 sent to Grace Wanjiku (${phone}).`}
+            message={`ABANREMIT: Confirmed. KES ${amount}.00 sent to ${phone}. Wallet ${wallet?.wallet_id || "—"}. Ref ${txId}.`}
             items={[
-              { label: "Transaction ID", value: "TXN20260211105" },
-              { label: "Recipient", value: "Grace Wanjiku" },
-              { label: "Phone", value: phone },
+              { label: "Transaction ID", value: txId },
+              { label: "Recipient Phone", value: phone },
               { label: "Amount", value: `KES ${amount}.00` },
               { label: "Fee", value: `KES ${fee.toFixed(2)}` },
-              { label: "New Balance", value: `KES ${(15300 - Number(amount) - fee).toLocaleString()}.00` },
-              { label: "Date", value: "11/02/2026 14:42" },
+              { label: "New Balance", value: `KES ${((wallet?.balance ?? 0) - Number(amount) - fee).toLocaleString(undefined, { minimumFractionDigits: 2 })}` },
+              { label: "Date", value: new Date().toLocaleString() },
             ]}
             onDone={handleDone}
           />
@@ -56,10 +58,7 @@ const SendMoneyPage = () => {
         <div className="max-w-md mx-auto">
           <AccountConfirmation
             title="Confirm Send Money"
-            details={[
-              { label: "Recipient Name", value: "Grace Wanjiku" },
-              { label: "Phone Number", value: phone },
-            ]}
+            details={[{ label: "Recipient Phone", value: phone }]}
             amount={amount}
             fee={fee.toFixed(2)}
             onConfirm={() => setStep("pin")}
@@ -83,11 +82,7 @@ const SendMoneyPage = () => {
             <label className="text-sm font-medium text-foreground">Amount (KES)</label>
             <Input type="number" placeholder="Enter amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="mt-1" />
           </div>
-          {amount && (
-            <div className="text-sm text-muted-foreground">
-              Fee: <span className="text-destructive">KES {fee.toFixed(2)}</span>
-            </div>
-          )}
+          {amount && <div className="text-sm text-muted-foreground">Fee: <span className="text-destructive">KES {fee.toFixed(2)}</span></div>}
           <Button onClick={() => setStep("confirm")} disabled={!phone || !amount} className="w-full">Continue</Button>
         </Card>
       </div>

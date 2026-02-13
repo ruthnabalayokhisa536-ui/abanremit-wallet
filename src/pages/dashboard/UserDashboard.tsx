@@ -1,22 +1,34 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Wallet, ArrowDownCircle, ArrowUpCircle, Send, Phone, FileText, Bell } from "lucide-react";
+import { Wallet, ArrowDownCircle, ArrowUpCircle, Send, Phone, FileText, Bell, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
-import { getLoggedInUser } from "@/lib/test-accounts";
-
-const demoTransactions = [
-  { id: "TXN20260211001", type: "Deposit", amount: "+KES 5,000.00", date: "11/02/2026 14:32", status: "Completed" },
-  { id: "TXN20260210045", type: "Withdrawal", amount: "-KES 1,200.00", date: "10/02/2026 09:15", status: "Completed" },
-  { id: "TXN20260209112", type: "Airtime", amount: "-KES 100.00", date: "09/02/2026 18:45", status: "Completed" },
-  { id: "TXN20260208078", type: "Send Money", amount: "-KES 3,500.00", date: "08/02/2026 11:20", status: "Completed" },
-  { id: "TXN20260207034", type: "Deposit", amount: "+KES 10,000.00", date: "07/02/2026 08:00", status: "Completed" },
-];
+import { useWallet } from "@/hooks/use-wallet";
+import { useProfile } from "@/hooks/use-profile";
+import { supabase } from "@/integrations/supabase/client";
 
 const UserDashboard = () => {
   const navigate = useNavigate();
-  const user = getLoggedInUser();
+  const { wallet, loading: walletLoading } = useWallet();
+  const { profile } = useProfile();
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [txLoading, setTxLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      if (!wallet) return;
+      const { data } = await supabase
+        .from("transactions")
+        .select("*")
+        .or(`sender_wallet_id.eq.${wallet.id},receiver_wallet_id.eq.${wallet.id}`)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      setTransactions(data || []);
+      setTxLoading(false);
+    };
+    if (wallet) fetchTransactions();
+  }, [wallet]);
 
   const actions = [
     { label: "Load Wallet", icon: ArrowDownCircle, path: "/dashboard/deposit", color: "text-success" },
@@ -35,18 +47,19 @@ const UserDashboard = () => {
             <Wallet className="w-6 h-6" />
             <span className="text-sm opacity-80">Wallet Balance</span>
           </div>
-          <p className="text-3xl font-bold">KES {(user?.balance ?? 15300).toLocaleString()}.00</p>
-          <p className="text-sm opacity-70 mt-2">Wallet ID: {user?.walletId ?? "7770001"}</p>
+          {walletLoading ? (
+            <Loader2 className="w-6 h-6 animate-spin" />
+          ) : (
+            <>
+              <p className="text-3xl font-bold">KES {(wallet?.balance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+              <p className="text-sm opacity-70 mt-2">Wallet ID: {wallet?.wallet_id ?? "—"}</p>
+            </>
+          )}
         </Card>
 
         <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
           {actions.map((action) => (
-            <Button
-              key={action.label}
-              variant="outline"
-              onClick={() => navigate(action.path)}
-              className="flex flex-col items-center gap-2 h-auto py-4"
-            >
+            <Button key={action.label} variant="outline" onClick={() => navigate(action.path)} className="flex flex-col items-center gap-2 h-auto py-4">
               <action.icon className={`w-5 h-5 ${action.color}`} />
               <span className="text-xs">{action.label}</span>
             </Button>
@@ -55,19 +68,28 @@ const UserDashboard = () => {
 
         <Card className="p-4">
           <h3 className="text-lg font-semibold mb-4 text-foreground">Recent Transactions</h3>
-          <div className="space-y-0">
-            {demoTransactions.map((tx) => (
-              <div key={tx.id} className="flex items-center justify-between py-3 border-b border-border last:border-0">
-                <div>
-                  <p className="text-sm font-medium text-foreground">{tx.type}</p>
-                  <p className="text-xs text-muted-foreground">{tx.id} • {tx.date}</p>
-                </div>
-                <span className={`text-sm font-semibold ${tx.amount.startsWith("+") ? "text-success" : "text-foreground"}`}>
-                  {tx.amount}
-                </span>
-              </div>
-            ))}
-          </div>
+          {txLoading ? (
+            <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+          ) : transactions.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">No transactions yet.</p>
+          ) : (
+            <div className="space-y-0">
+              {transactions.map((tx) => {
+                const isCredit = tx.receiver_wallet_id === wallet?.id;
+                return (
+                  <div key={tx.id} className="flex items-center justify-between py-3 border-b border-border last:border-0">
+                    <div>
+                      <p className="text-sm font-medium text-foreground capitalize">{tx.type}</p>
+                      <p className="text-xs text-muted-foreground">{tx.transaction_id} • {new Date(tx.created_at).toLocaleString()}</p>
+                    </div>
+                    <span className={`text-sm font-semibold ${isCredit ? "text-success" : "text-foreground"}`}>
+                      {isCredit ? "+" : "-"}KES {Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </Card>
       </div>
     </DashboardLayout>

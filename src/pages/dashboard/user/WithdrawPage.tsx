@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import PinInput from "@/components/PinInput";
 import ReceiptScreen from "@/components/ReceiptScreen";
 import AccountConfirmation from "@/components/AccountConfirmation";
+import { useWallet } from "@/hooks/use-wallet";
 
 type Step = "form" | "confirm" | "pin" | "receipt";
 type WithdrawMethod = "agent" | "mpesa";
@@ -15,6 +16,8 @@ const WithdrawPage = () => {
   const [method, setMethod] = useState<WithdrawMethod>("mpesa");
   const [amount, setAmount] = useState("");
   const [agentNumber, setAgentNumber] = useState("");
+  const [txId, setTxId] = useState("");
+  const { wallet } = useWallet();
 
   const fee = Math.max(30, Number(amount) * 0.01);
   const handleDone = () => { setStep("form"); setAmount(""); setAgentNumber(""); };
@@ -23,7 +26,7 @@ const WithdrawPage = () => {
     return (
       <DashboardLayout role="user">
         <div className="max-w-md mx-auto">
-          <PinInput onSubmit={() => setStep("receipt")} onCancel={() => setStep("confirm")} />
+          <PinInput onSubmit={() => { setTxId("TXN-" + Date.now().toString(36).toUpperCase()); setStep("receipt"); }} onCancel={() => setStep("confirm")} />
         </div>
       </DashboardLayout>
     );
@@ -35,14 +38,14 @@ const WithdrawPage = () => {
         <div className="max-w-md mx-auto">
           <ReceiptScreen
             title="Withdrawal Successful"
-            message={`KES ${amount}.00 has been sent to ${method === "agent" ? "Agent James Mwangi (AGT-0042)" : "your M-Pesa +254 728 XXX XXX"}.`}
+            message={`ABANREMIT: Confirmed. KES ${amount}.00 withdrawn via ${method === "agent" ? "Agent" : "M-Pesa"}. Wallet ${wallet?.wallet_id || "—"}. Ref ${txId}.`}
             items={[
-              { label: "Transaction ID", value: "TXN20260211102" },
+              { label: "Transaction ID", value: txId },
               { label: "Amount", value: `KES ${amount}.00` },
               { label: "Fee", value: `KES ${fee.toFixed(2)}` },
               { label: "Method", value: method === "agent" ? "Agent Withdrawal" : "M-Pesa" },
-              { label: "New Balance", value: `KES ${(15300 - Number(amount) - fee).toLocaleString()}.00` },
-              { label: "Date", value: "11/02/2026 14:40" },
+              { label: "New Balance", value: `KES ${((wallet?.balance ?? 0) - Number(amount) - fee).toLocaleString(undefined, { minimumFractionDigits: 2 })}` },
+              { label: "Date", value: new Date().toLocaleString() },
             ]}
             onDone={handleDone}
           />
@@ -53,27 +56,12 @@ const WithdrawPage = () => {
 
   if (step === "confirm") {
     const details = method === "agent"
-      ? [
-          { label: "Agent Name", value: "James Mwangi" },
-          { label: "Agent ID", value: "AGT-0042" },
-          { label: "Agent Number", value: agentNumber || "0728123456" },
-        ]
-      : [
-          { label: "M-Pesa Name", value: "John Doe" },
-          { label: "Phone Number", value: "+254 728 XXX XXX" },
-        ];
-
+      ? [{ label: "Agent Number", value: agentNumber }]
+      : [{ label: "M-Pesa", value: "Your registered number" }];
     return (
       <DashboardLayout role="user">
         <div className="max-w-md mx-auto">
-          <AccountConfirmation
-            title="Confirm Withdrawal"
-            details={details}
-            amount={amount}
-            fee={fee.toFixed(2)}
-            onConfirm={() => setStep("pin")}
-            onCancel={() => setStep("form")}
-          />
+          <AccountConfirmation title="Confirm Withdrawal" details={details} amount={amount} fee={fee.toFixed(2)} onConfirm={() => setStep("pin")} onCancel={() => setStep("form")} />
         </div>
       </DashboardLayout>
     );
@@ -97,21 +85,11 @@ const WithdrawPage = () => {
               <Input placeholder="Enter agent number" value={agentNumber} onChange={(e) => setAgentNumber(e.target.value)} className="mt-1" />
             </div>
           )}
-          {method === "mpesa" && (
-            <div>
-              <label className="text-sm font-medium text-foreground">M-Pesa Number</label>
-              <Input value="+254 728 XXX XXX" readOnly className="mt-1 bg-muted" />
-            </div>
-          )}
           <div>
             <label className="text-sm font-medium text-foreground">Amount (KES)</label>
             <Input type="number" placeholder="Enter amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="mt-1" />
           </div>
-          {amount && (
-            <div className="text-sm text-muted-foreground">
-              Fee: <span className="text-destructive">KES {fee.toFixed(2)}</span>
-            </div>
-          )}
+          {amount && <div className="text-sm text-muted-foreground">Fee: <span className="text-destructive">KES {fee.toFixed(2)}</span></div>}
           <Button onClick={() => setStep("confirm")} disabled={!amount || (method === "agent" && !agentNumber)} className="w-full">Continue</Button>
         </Card>
       </div>

@@ -1,26 +1,39 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
-
-const demoTransactions = [
-  { id: "TXN20260211001", type: "Deposit", amount: "+KES 5,000.00", date: "11/02/2026 14:32", fee: "KES 0.00" },
-  { id: "TXN20260210045", type: "Withdrawal", amount: "-KES 1,200.00", date: "10/02/2026 09:15", fee: "KES 30.00" },
-  { id: "TXN20260209112", type: "Airtime", amount: "-KES 100.00", date: "09/02/2026 18:45", fee: "KES 0.00" },
-  { id: "TXN20260208078", type: "Send Money", amount: "-KES 3,500.00", date: "08/02/2026 11:20", fee: "KES 17.50" },
-  { id: "TXN20260207034", type: "Deposit", amount: "+KES 10,000.00", date: "07/02/2026 08:00", fee: "KES 0.00" },
-];
+import { Download, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useWallet } from "@/hooks/use-wallet";
 
 const StatementsPage = () => {
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showFeeDialog, setShowFeeDialog] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
+  const { wallet } = useWallet();
+
+  useEffect(() => {
+    const fetch = async () => {
+      if (!wallet) return;
+      const { data } = await supabase
+        .from("transactions")
+        .select("*")
+        .or(`sender_wallet_id.eq.${wallet.id},receiver_wallet_id.eq.${wallet.id}`)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      setTransactions(data || []);
+      setLoading(false);
+    };
+    if (wallet) fetch();
+  }, [wallet]);
 
   const handleDownload = () => {
     setDownloaded(true);
     setShowFeeDialog(false);
-    // Simulate CSV download
-    const csv = "Transaction ID,Type,Amount,Fee,Date\n" + demoTransactions.map(t => `${t.id},${t.type},${t.amount},${t.fee},${t.date}`).join("\n");
+    const csv = "Transaction ID,Type,Amount,Fee,Date\n" + transactions.map(t =>
+      `${t.transaction_id},${t.type},${t.amount},${t.fee},${new Date(t.created_at).toLocaleString()}`
+    ).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -44,10 +57,9 @@ const StatementsPage = () => {
           <Card className="p-6 border-warning/50 bg-warning/5">
             <h3 className="text-lg font-semibold text-foreground">Statement Download Fee</h3>
             <p className="text-sm text-muted-foreground mt-2">
-              A fee of <strong className="text-destructive">KES 50.00</strong> will be deducted from your wallet balance for this statement download.
+              A fee of <strong className="text-destructive">KES 50.00</strong> will be deducted from your wallet balance.
             </p>
-            <p className="text-sm text-muted-foreground mt-1">Current Balance: <strong>KES 15,300.00</strong></p>
-            <p className="text-sm text-muted-foreground">Balance After: <strong>KES 15,250.00</strong></p>
+            <p className="text-sm text-muted-foreground mt-1">Current Balance: <strong>KES {(wallet?.balance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</strong></p>
             <div className="flex gap-3 mt-4">
               <Button variant="outline" onClick={() => setShowFeeDialog(false)} className="flex-1">Cancel</Button>
               <Button onClick={handleDownload} className="flex-1">Pay KES 50 & Download</Button>
@@ -61,30 +73,41 @@ const StatementsPage = () => {
           </Card>
         )}
 
-        <Card className="overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="text-left p-3 font-medium text-muted-foreground">Transaction ID</th>
-                <th className="text-left p-3 font-medium text-muted-foreground">Type</th>
-                <th className="text-right p-3 font-medium text-muted-foreground">Amount</th>
-                <th className="text-right p-3 font-medium text-muted-foreground">Fee</th>
-                <th className="text-right p-3 font-medium text-muted-foreground">Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {demoTransactions.map((tx) => (
-                <tr key={tx.id} className="border-b border-border last:border-0">
-                  <td className="p-3 font-mono text-xs">{tx.id}</td>
-                  <td className="p-3">{tx.type}</td>
-                  <td className={`p-3 text-right font-medium ${tx.amount.startsWith("+") ? "text-success" : ""}`}>{tx.amount}</td>
-                  <td className="p-3 text-right text-muted-foreground">{tx.fee}</td>
-                  <td className="p-3 text-right text-muted-foreground">{tx.date}</td>
+        {loading ? (
+          <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+        ) : (
+          <Card className="overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="text-left p-3 font-medium text-muted-foreground">Transaction ID</th>
+                  <th className="text-left p-3 font-medium text-muted-foreground">Type</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground">Amount</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground">Fee</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground">Date</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+              </thead>
+              <tbody>
+                {transactions.length === 0 ? (
+                  <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No transactions yet.</td></tr>
+                ) : transactions.map((tx) => {
+                  const isCredit = tx.receiver_wallet_id === wallet?.id;
+                  return (
+                    <tr key={tx.id} className="border-b border-border last:border-0">
+                      <td className="p-3 font-mono text-xs">{tx.transaction_id}</td>
+                      <td className="p-3 capitalize">{tx.type}</td>
+                      <td className={`p-3 text-right font-medium ${isCredit ? "text-success" : ""}`}>
+                        {isCredit ? "+" : "-"}KES {Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                      </td>
+                      <td className="p-3 text-right text-muted-foreground">KES {Number(tx.fee).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                      <td className="p-3 text-right text-muted-foreground">{new Date(tx.created_at).toLocaleString()}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   );

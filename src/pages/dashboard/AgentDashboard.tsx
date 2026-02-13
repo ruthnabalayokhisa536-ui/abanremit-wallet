@@ -1,22 +1,45 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Wallet, ArrowDownCircle, ArrowUpCircle, Send, DollarSign, Phone, FileText, Bell } from "lucide-react";
+import { Wallet, ArrowDownCircle, ArrowUpCircle, Send, DollarSign, Phone, Bell, Loader2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
-import { getLoggedInUser } from "@/lib/test-accounts";
-
-const demoTransactions = [
-  { id: "TXN20260211030", type: "Deposit to User", amount: "-KES 8,000.00", date: "11/02/2026 13:10", status: "Completed" },
-  { id: "TXN20260211028", type: "Commission", amount: "+KES 160.00", date: "11/02/2026 13:10", status: "Completed" },
-  { id: "TXN20260210019", type: "Transfer", amount: "-KES 5,000.00", date: "10/02/2026 10:30", status: "Completed" },
-  { id: "TXN20260210017", type: "Commission", amount: "+KES 100.00", date: "10/02/2026 10:30", status: "Completed" },
-  { id: "TXN20260209010", type: "Deposit to User", amount: "-KES 3,000.00", date: "09/02/2026 16:45", status: "Completed" },
-];
+import { useWallet } from "@/hooks/use-wallet";
+import { useProfile } from "@/hooks/use-profile";
+import { supabase } from "@/integrations/supabase/client";
 
 const AgentDashboard = () => {
   const navigate = useNavigate();
-  const user = getLoggedInUser();
+  const { wallet, loading: walletLoading } = useWallet();
+  const { profile } = useProfile();
+  const [agent, setAgent] = useState<any>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [txLoading, setTxLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAgent = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from("agents").select("*").eq("user_id", user.id).limit(1).single();
+      setAgent(data);
+    };
+    fetchAgent();
+  }, []);
+
+  useEffect(() => {
+    const fetchTransactions = async () => {
+      if (!wallet) return;
+      const { data } = await supabase
+        .from("transactions")
+        .select("*")
+        .or(`sender_wallet_id.eq.${wallet.id},receiver_wallet_id.eq.${wallet.id}`)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      setTransactions(data || []);
+      setTxLoading(false);
+    };
+    if (wallet) fetchTransactions();
+  }, [wallet]);
 
   const actions = [
     { label: "Deposit to Wallet", icon: ArrowDownCircle, path: "/agent/deposit", color: "text-success" },
@@ -36,16 +59,22 @@ const AgentDashboard = () => {
               <Wallet className="w-6 h-6" />
               <span className="text-sm opacity-80">Wallet Balance</span>
             </div>
-            <p className="text-3xl font-bold">KES {(user?.balance ?? 245800).toLocaleString()}.00</p>
-            <p className="text-sm opacity-70 mt-2">Wallet ID: {user?.walletId ?? "8880001"}</p>
+            {walletLoading ? (
+              <Loader2 className="w-6 h-6 animate-spin" />
+            ) : (
+              <>
+                <p className="text-3xl font-bold">KES {(wallet?.balance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                <p className="text-sm opacity-70 mt-2">Wallet ID: {wallet?.wallet_id ?? "—"}</p>
+              </>
+            )}
           </Card>
           <Card className="p-6 border-success/30 bg-success/5">
             <div className="flex items-center gap-3 mb-4">
               <DollarSign className="w-6 h-6 text-success" />
               <span className="text-sm text-muted-foreground">Commission Balance</span>
             </div>
-            <p className="text-3xl font-bold text-success">KES {(user?.commissionBalance ?? 12450).toLocaleString()}.00</p>
-            <p className="text-sm text-muted-foreground mt-2">Agent ID: {user?.agentId ?? "AGT-0042"}</p>
+            <p className="text-3xl font-bold text-success">KES {(agent?.commission_balance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+            <p className="text-sm text-muted-foreground mt-2">Agent ID: {agent?.agent_id ?? "—"}</p>
           </Card>
         </div>
 
@@ -60,19 +89,28 @@ const AgentDashboard = () => {
 
         <Card className="p-4">
           <h3 className="text-lg font-semibold mb-4 text-foreground">Recent Transactions</h3>
-          <div className="space-y-0">
-            {demoTransactions.map((tx) => (
-              <div key={tx.id} className="flex items-center justify-between py-3 border-b border-border last:border-0">
-                <div>
-                  <p className="text-sm font-medium text-foreground">{tx.type}</p>
-                  <p className="text-xs text-muted-foreground">{tx.id} • {tx.date}</p>
-                </div>
-                <span className={`text-sm font-semibold ${tx.amount.startsWith("+") ? "text-success" : "text-foreground"}`}>
-                  {tx.amount}
-                </span>
-              </div>
-            ))}
-          </div>
+          {txLoading ? (
+            <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+          ) : transactions.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">No transactions yet.</p>
+          ) : (
+            <div className="space-y-0">
+              {transactions.map((tx) => {
+                const isCredit = tx.receiver_wallet_id === wallet?.id;
+                return (
+                  <div key={tx.id} className="flex items-center justify-between py-3 border-b border-border last:border-0">
+                    <div>
+                      <p className="text-sm font-medium text-foreground capitalize">{tx.type}</p>
+                      <p className="text-xs text-muted-foreground">{tx.transaction_id} • {new Date(tx.created_at).toLocaleString()}</p>
+                    </div>
+                    <span className={`text-sm font-semibold ${isCredit ? "text-success" : "text-foreground"}`}>
+                      {isCredit ? "+" : "-"}KES {Number(tx.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </Card>
       </div>
     </DashboardLayout>

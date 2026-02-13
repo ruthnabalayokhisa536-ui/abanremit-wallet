@@ -6,7 +6,8 @@ import { Input } from "@/components/ui/input";
 import PinInput from "@/components/PinInput";
 import ReceiptScreen from "@/components/ReceiptScreen";
 import AccountConfirmation from "@/components/AccountConfirmation";
-import { getLoggedInUser } from "@/lib/test-accounts";
+import { useWallet } from "@/hooks/use-wallet";
+import { useProfile } from "@/hooks/use-profile";
 
 type Step = "form" | "confirm" | "pin" | "receipt";
 
@@ -14,7 +15,8 @@ const AgentTransferPage = () => {
   const [step, setStep] = useState<Step>("form");
   const [walletId, setWalletId] = useState("");
   const [amount, setAmount] = useState("");
-  const user = getLoggedInUser();
+  const [txId, setTxId] = useState("");
+  const { wallet } = useWallet();
 
   const fee = Math.max(25, Number(amount) * 0.01);
   const handleDone = () => { setStep("form"); setWalletId(""); setAmount(""); };

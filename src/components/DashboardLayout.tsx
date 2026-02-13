@@ -1,13 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
   Home, Wallet, ArrowDownCircle, ArrowUpCircle, FileText, Bell, User,
   Users, Settings, Shield, BarChart3, Send, Phone, LogOut, DollarSign,
-  Menu, X, ChevronDown, ChevronRight, Download
+  Menu, X, ChevronDown, ChevronRight, Globe, Loader2
 } from "lucide-react";
-import { getLoggedInUser, logoutUser } from "@/lib/test-accounts";
+import { useAuth } from "@/hooks/use-auth";
+import { useRole } from "@/hooks/use-role";
+import { useProfile } from "@/hooks/use-profile";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -52,13 +54,15 @@ const adminNav: NavItem[] = [
   { label: "Users", icon: Users, path: "/admin/users" },
   { label: "Agents", icon: Shield, path: "/admin/agents" },
   { label: "Transactions", icon: BarChart3, children: [
-    { label: "Deposits", icon: ArrowDownCircle, path: "/admin/transactions/deposits" },
-    { label: "Withdrawals", icon: ArrowUpCircle, path: "/admin/transactions/withdrawals" },
-    { label: "Transfers", icon: Send, path: "/admin/transactions/transfers" },
-    { label: "Statements", icon: FileText, path: "/admin/transactions/statements" },
-    { label: "Reports", icon: BarChart3, path: "/admin/transactions/reports" },
+    { label: "Deposits", icon: ArrowDownCircle, path: "/admin/deposits" },
+    { label: "Withdrawals", icon: ArrowUpCircle, path: "/admin/withdrawals" },
+    { label: "Transfers", icon: Send, path: "/admin/transfers" },
+    { label: "Statements", icon: FileText, path: "/admin/statements" },
+    { label: "Reports", icon: BarChart3, path: "/admin/reports" },
   ]},
   { label: "Fees & Charges", icon: Settings, path: "/admin/fees" },
+  { label: "Currencies", icon: Globe, path: "/admin/currencies" },
+  { label: "Airtime", icon: Phone, path: "/admin/airtime" },
   { label: "Admin Actions", icon: Wallet, path: "/admin/actions" },
   { label: "Audit Logs", icon: FileText, path: "/admin/audit" },
 ];
@@ -68,12 +72,33 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [openDropdowns, setOpenDropdowns] = useState<string[]>([]);
+  const { user, loading: authLoading, signOut } = useAuth();
+  const { role: dbRole, loading: roleLoading } = useRole();
+  const { profile } = useProfile();
+
   const nav = role === "admin" ? adminNav : role === "agent" ? agentNav : userNav;
   const roleLabel = role === "admin" ? "Administrator" : role === "agent" ? "Agent" : "User";
-  const user = getLoggedInUser();
 
-  const handleLogout = () => {
-    logoutUser();
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      navigate("/login", { replace: true });
+    }
+  }, [authLoading, user, navigate]);
+
+  // Redirect if role mismatch
+  useEffect(() => {
+    if (!roleLoading && dbRole && user) {
+      if (dbRole !== role) {
+        if (dbRole === "admin") navigate("/admin", { replace: true });
+        else if (dbRole === "agent") navigate("/agent", { replace: true });
+        else navigate("/dashboard", { replace: true });
+      }
+    }
+  }, [dbRole, roleLoading, role, user, navigate]);
+
+  const handleLogout = async () => {
+    await signOut();
     navigate("/login");
   };
 
@@ -86,6 +111,14 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
   const isActive = (path?: string) => path && location.pathname === path;
   const isDropdownActive = (item: NavItem) =>
     item.children?.some((c) => location.pathname === c.path);
+
+  if (authLoading || roleLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   const renderNavItem = (item: NavItem) => {
     if (item.children) {
@@ -151,21 +184,20 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
       <div className="p-6 border-b border-sidebar-border">
         <h1 className="text-xl font-bold">AbanRemit</h1>
         <p className="text-xs opacity-80 mt-1">{roleLabel} Portal</p>
-        {user && (
-          <p className="text-xs opacity-60 mt-0.5 truncate">{user.name}</p>
+        {profile && (
+          <p className="text-xs opacity-60 mt-0.5 truncate">{profile.full_name}</p>
         )}
       </div>
 
-      {/* KYC Status */}
-      {user && role !== "admin" && (
+      {profile && role !== "admin" && (
         <div className="px-4 pt-3">
           <div className="flex items-center gap-2 text-xs">
             <span className="opacity-60">KYC:</span>
             <Badge
-              variant={user.kycStatus === "approved" ? "default" : user.kycStatus === "pending" ? "secondary" : "destructive"}
+              variant={profile.kyc_status === "approved" ? "default" : profile.kyc_status === "pending" ? "secondary" : "destructive"}
               className="text-[10px] h-5"
             >
-              {user.kycStatus.charAt(0).toUpperCase() + user.kycStatus.slice(1)}
+              {profile.kyc_status.charAt(0).toUpperCase() + profile.kyc_status.slice(1)}
             </Badge>
           </div>
         </div>
@@ -194,12 +226,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
 
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-64 flex-col bg-sidebar text-sidebar-foreground flex-shrink-0">
         {sidebarContent}
       </aside>
 
-      {/* Mobile overlay */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 md:hidden">
           <div className="absolute inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
@@ -215,7 +245,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
       )}
 
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Mobile header */}
         <header className="md:hidden flex items-center justify-between p-4 border-b border-border bg-card">
           <button onClick={() => setMobileOpen(true)} className="p-1">
             <Menu className="w-6 h-6 text-foreground" />
@@ -224,12 +253,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
           <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">{roleLabel}</span>
         </header>
 
-        {/* Content */}
         <main className="flex-1 p-4 md:p-8 overflow-y-auto">
           {children}
         </main>
 
-        {/* Mobile bottom nav */}
         <nav className="md:hidden flex border-t border-border bg-card">
           {nav.filter(i => i.path).slice(0, 5).map((item) => (
             <Link

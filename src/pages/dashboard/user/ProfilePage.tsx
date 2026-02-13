@@ -4,12 +4,14 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import PinInput from "@/components/PinInput";
-import { getLoggedInUser } from "@/lib/test-accounts";
+import { useProfile } from "@/hooks/use-profile";
+import { useWallet } from "@/hooks/use-wallet";
 
 const ProfilePage = () => {
   const [showPinSetup, setShowPinSetup] = useState(false);
   const [pinSet, setPinSet] = useState(false);
-  const user = getLoggedInUser();
+  const { profile } = useProfile();
+  const { wallet } = useWallet();
 
   if (showPinSetup) {
     return (
@@ -33,33 +35,30 @@ const ProfilePage = () => {
         <Card className="p-6 space-y-4">
           <div>
             <label className="text-sm font-medium text-muted-foreground">Full Name</label>
-            <p className="text-foreground font-medium">{user?.name ?? "User"}</p>
+            <p className="text-foreground font-medium">{profile?.full_name ?? "—"}</p>
           </div>
           <div>
             <label className="text-sm font-medium text-muted-foreground">Phone Number</label>
-            <p className="text-foreground font-medium">{user?.phone ?? ""}</p>
+            <p className="text-foreground font-medium">{profile?.phone ?? "—"}</p>
           </div>
           <div>
             <label className="text-sm font-medium text-muted-foreground">Email</label>
-            <p className="text-foreground font-medium">{user?.email ?? "-"}</p>
+            <p className="text-foreground font-medium">{profile?.email ?? "—"}</p>
           </div>
           <div>
             <label className="text-sm font-medium text-muted-foreground">Wallet ID</label>
-            <p className="text-foreground font-mono text-sm">{user?.walletId ?? ""}</p>
+            <p className="text-foreground font-mono text-sm">{wallet?.wallet_id ?? "—"}</p>
           </div>
           <div>
             <label className="text-sm font-medium text-muted-foreground">KYC Status</label>
             <div className="mt-1">
-              <Badge
-                variant={user?.kycStatus === "approved" ? "default" : user?.kycStatus === "pending" ? "secondary" : "destructive"}
-              >
-                {user?.kycStatus ? user.kycStatus.charAt(0).toUpperCase() + user.kycStatus.slice(1) : "Pending"}
+              <Badge variant={profile?.kyc_status === "approved" ? "default" : profile?.kyc_status === "pending" ? "secondary" : "destructive"} className="capitalize">
+                {profile?.kyc_status ?? "Pending"}
               </Badge>
             </div>
           </div>
         </Card>
 
-        {/* KYC Upload Section */}
         <Card className="p-6 space-y-4">
           <h3 className="text-lg font-semibold text-foreground">KYC Documents</h3>
           <p className="text-sm text-muted-foreground">Upload your documents for verification. Required: Live selfie + National ID (front & back).</p>
@@ -88,7 +87,7 @@ const ProfilePage = () => {
             </div>
           ) : (
             <div>
-              <p className="text-sm text-muted-foreground mb-3">Set a 4-digit PIN for transactions. Required for withdrawals, transfers, and airtime purchases.</p>
+              <p className="text-sm text-muted-foreground mb-3">Set a 4-digit PIN for transactions.</p>
               <Button onClick={() => setShowPinSetup(true)}>Create PIN</Button>
             </div>
           )}

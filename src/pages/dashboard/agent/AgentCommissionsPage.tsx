@@ -1,17 +1,36 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card } from "@/components/ui/card";
-import { DollarSign } from "lucide-react";
-
-const demoCommissions = [
-  { id: "COM-001", txId: "TXN20260211030", amount: "KES 160.00", type: "Deposit", date: "11/02/2026 13:10" },
-  { id: "COM-002", txId: "TXN20260210019", amount: "KES 100.00", type: "Transfer", date: "10/02/2026 10:30" },
-  { id: "COM-003", txId: "TXN20260209010", amount: "KES 60.00", type: "Deposit", date: "09/02/2026 16:45" },
-  { id: "COM-004", txId: "TXN20260208005", amount: "KES 200.00", type: "Transfer", date: "08/02/2026 14:20" },
-  { id: "COM-005", txId: "TXN20260207001", amount: "KES 80.00", type: "Deposit", date: "07/02/2026 09:00" },
-];
+import { DollarSign, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 const AgentCommissionsPage = () => {
+  const [commissions, setCommissions] = useState<any[]>([]);
+  const [agent, setAgent] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetch = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: agentData } = await supabase.from("agents").select("*").eq("user_id", user.id).limit(1).single();
+      setAgent(agentData);
+
+      if (agentData) {
+        const { data } = await supabase
+          .from("agent_commissions")
+          .select("*")
+          .eq("agent_id", agentData.id)
+          .order("created_at", { ascending: false })
+          .limit(50);
+        setCommissions(data || []);
+      }
+      setLoading(false);
+    };
+    fetch();
+  }, []);
+
   return (
     <DashboardLayout role="agent">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -22,33 +41,35 @@ const AgentCommissionsPage = () => {
             <DollarSign className="w-6 h-6 text-success" />
             <span className="text-sm text-muted-foreground">Total Commission Earned</span>
           </div>
-          <p className="text-3xl font-bold text-success">KES 12,450.00</p>
+          <p className="text-3xl font-bold text-success">KES {(agent?.commission_balance ?? 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
         </Card>
 
-        <Card className="overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/50">
-                <th className="text-left p-3 font-medium text-muted-foreground">Commission ID</th>
-                <th className="text-left p-3 font-medium text-muted-foreground">Transaction</th>
-                <th className="text-left p-3 font-medium text-muted-foreground">Type</th>
-                <th className="text-right p-3 font-medium text-muted-foreground">Amount</th>
-                <th className="text-right p-3 font-medium text-muted-foreground">Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              {demoCommissions.map((c) => (
-                <tr key={c.id} className="border-b border-border last:border-0">
-                  <td className="p-3 font-mono text-xs">{c.id}</td>
-                  <td className="p-3 font-mono text-xs">{c.txId}</td>
-                  <td className="p-3">{c.type}</td>
-                  <td className="p-3 text-right font-medium text-success">{c.amount}</td>
-                  <td className="p-3 text-right text-muted-foreground">{c.date}</td>
+        {loading ? (
+          <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
+        ) : (
+          <Card className="overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/50">
+                  <th className="text-left p-3 font-medium text-muted-foreground">Transaction</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground">Amount</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground">Date</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+              </thead>
+              <tbody>
+                {commissions.length === 0 ? (
+                  <tr><td colSpan={3} className="p-8 text-center text-muted-foreground">No commissions yet.</td></tr>
+                ) : commissions.map((c) => (
+                  <tr key={c.id} className="border-b border-border last:border-0">
+                    <td className="p-3 font-mono text-xs">{c.transaction_id}</td>
+                    <td className="p-3 text-right font-medium text-success">KES {Number(c.commission_amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                    <td className="p-3 text-right text-muted-foreground">{new Date(c.created_at).toLocaleString()}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   );

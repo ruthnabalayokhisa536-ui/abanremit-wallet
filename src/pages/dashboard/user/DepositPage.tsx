@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import PinInput from "@/components/PinInput";
 import ReceiptScreen from "@/components/ReceiptScreen";
-import { getLoggedInUser } from "@/lib/test-accounts";
+import { useWallet } from "@/hooks/use-wallet";
+import { useProfile } from "@/hooks/use-profile";
 
 type Step = "form" | "confirm" | "pin" | "receipt";
 type Method = "mpesa" | "pesapal" | "card";
@@ -15,11 +16,16 @@ const DepositPage = () => {
   const [method, setMethod] = useState<Method>("mpesa");
   const [amount, setAmount] = useState("");
   const [cardForm, setCardForm] = useState({ number: "", expiry: "", cvv: "", name: "" });
-  const user = getLoggedInUser();
+  const [txId, setTxId] = useState("");
+  const { wallet } = useWallet();
+  const { profile } = useProfile();
   const serviceFee = 0.40;
 
   const handleConfirm = () => setStep("pin");
-  const handlePin = () => setStep("receipt");
+  const handlePin = () => {
+    setTxId("TXN-" + Date.now().toString(36).toUpperCase());
+    setStep("receipt");
+  };
   const handleDone = () => { setStep("form"); setAmount(""); setCardForm({ number: "", expiry: "", cvv: "", name: "" }); };
 
   if (step === "pin") {
@@ -38,15 +44,15 @@ const DepositPage = () => {
         <div className="max-w-md mx-auto">
           <ReceiptScreen
             title="Wallet Loaded Successfully"
-            message={`KES ${amount}.00 has been loaded to your wallet via ${method === "mpesa" ? "M-Pesa" : method === "pesapal" ? "PesaPal" : "Card"}.`}
+            message={`ABANREMIT: Confirmed. KES ${amount}.00 loaded to wallet ${wallet?.wallet_id || "—"} via ${method === "mpesa" ? "M-Pesa" : method === "pesapal" ? "PesaPal" : "Card"}. Ref ${txId}.`}
             items={[
-              { label: "Transaction ID", value: "TXN20260212099" },
+              { label: "Transaction ID", value: txId },
               { label: "Amount", value: `KES ${amount}.00` },
               { label: "Method", value: method === "mpesa" ? "M-Pesa" : method === "pesapal" ? "PesaPal" : "Card" },
               { label: "Service Fee", value: `KES ${serviceFee.toFixed(2)}` },
-              { label: "Sender", value: user?.name ?? "User" },
-              { label: "Wallet ID", value: user?.walletId ?? "7770001" },
-              { label: "New Balance", value: `KES ${((user?.balance ?? 15300) + Number(amount)).toLocaleString()}.00` },
+              { label: "Sender", value: profile?.full_name ?? "—" },
+              { label: "Wallet ID", value: wallet?.wallet_id ?? "—" },
+              { label: "New Balance", value: `KES ${((wallet?.balance ?? 0) + Number(amount)).toLocaleString(undefined, { minimumFractionDigits: 2 })}` },
               { label: "Date", value: new Date().toLocaleString() },
             ]}
             onDone={handleDone}
@@ -78,7 +84,7 @@ const DepositPage = () => {
             {method === "mpesa" && (
               <div>
                 <label className="text-sm font-medium text-foreground">M-Pesa Number</label>
-                <Input value={user?.phone ?? ""} readOnly className="mt-1 bg-muted" />
+                <Input value={profile?.phone ?? ""} readOnly className="mt-1 bg-muted" />
               </div>
             )}
             {method === "card" && (

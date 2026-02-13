@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import PinInput from "@/components/PinInput";
 import ReceiptScreen from "@/components/ReceiptScreen";
 import AccountConfirmation from "@/components/AccountConfirmation";
+import { useWallet } from "@/hooks/use-wallet";
 
 type Step = "form" | "confirm" | "pin" | "receipt";
 type Method = "mpesa" | "wallet";
@@ -15,6 +16,8 @@ const AgentDepositPage = () => {
   const [method, setMethod] = useState<Method>("wallet");
   const [walletNumber, setWalletNumber] = useState("");
   const [amount, setAmount] = useState("");
+  const [txId, setTxId] = useState("");
+  const { wallet } = useWallet();
 
   const handleDone = () => { setStep("form"); setWalletNumber(""); setAmount(""); };
 
@@ -22,7 +25,7 @@ const AgentDepositPage = () => {
     return (
       <DashboardLayout role="agent">
         <div className="max-w-md mx-auto">
-          <PinInput onSubmit={() => setStep("receipt")} onCancel={() => setStep("confirm")} title="Enter Agent PIN" />
+          <PinInput onSubmit={() => { setTxId("TXN-" + Date.now().toString(36).toUpperCase()); setStep("receipt"); }} onCancel={() => setStep("confirm")} title="Enter Agent PIN" />
         </div>
       </DashboardLayout>
     );
@@ -34,16 +37,15 @@ const AgentDepositPage = () => {
         <div className="max-w-md mx-auto">
           <ReceiptScreen
             title="Deposit Successful"
-            message={`KES ${amount}.00 deposited to Alice Kamau's wallet (${walletNumber}).`}
+            message={`ABANREMIT: Confirmed. KES ${amount}.00 deposited to wallet ${walletNumber}. Ref ${txId}.`}
             items={[
-              { label: "Transaction ID", value: "TXN20260211033" },
-              { label: "Recipient", value: "Alice Kamau" },
+              { label: "Transaction ID", value: txId },
               { label: "Wallet ID", value: walletNumber },
-              { label: "Phone", value: "+254 712 345 678" },
               { label: "Amount", value: `KES ${amount}.00` },
+              { label: "Method", value: method === "mpesa" ? "M-Pesa" : "Internal Wallet" },
               { label: "Commission Earned", value: `KES ${(Number(amount) * 0.02).toFixed(2)}` },
-              { label: "Agent Balance", value: `KES ${(245800 - Number(amount)).toLocaleString()}.00` },
-              { label: "Date", value: "11/02/2026 14:50" },
+              { label: "Agent Balance", value: `KES ${((wallet?.balance ?? 0) - Number(amount)).toLocaleString(undefined, { minimumFractionDigits: 2 })}` },
+              { label: "Date", value: new Date().toLocaleString() },
             ]}
             onDone={handleDone}
           />
@@ -59,9 +61,7 @@ const AgentDepositPage = () => {
           <AccountConfirmation
             title="Confirm Deposit to User"
             details={[
-              { label: "User Name", value: "Alice Kamau" },
               { label: "Wallet ID", value: walletNumber },
-              { label: "Phone Number", value: "+254 712 345 678" },
               { label: "Method", value: method === "mpesa" ? "M-Pesa" : "Internal Wallet" },
             ]}
             amount={amount}
@@ -88,7 +88,7 @@ const AgentDepositPage = () => {
           </div>
           <div>
             <label className="text-sm font-medium text-foreground">User Wallet Number</label>
-            <Input placeholder="WAL-XXXX-XXXX-XXXX" value={walletNumber} onChange={(e) => setWalletNumber(e.target.value)} className="mt-1" />
+            <Input placeholder="Enter wallet ID" value={walletNumber} onChange={(e) => setWalletNumber(e.target.value)} className="mt-1" />
           </div>
           <div>
             <label className="text-sm font-medium text-foreground">Amount (KES)</label>
