@@ -39,7 +39,7 @@ export interface MPesaTransaction {
  */
 export const mpesaService = {
   /**
-   * Initiate M-Pesa STK Push for deposit
+   * Initiate M-Pesa STK Push for deposit (via Render Proxy)
    */
   async initiateDeposit(request: MPesaDepositRequest): Promise<MPesaDepositResponse> {
     try {
@@ -82,10 +82,11 @@ export const mpesaService = {
       }
 
       // Use M-Pesa Proxy Server on Render
-      const mpesaApiUrl = "https://mpesa-proxy.onrender.com/stkpush";
+      const mpesaProxyUrl = "https://mpesa-proxy.onrender.com/stkpush";
 
-      // Call M-Pesa Proxy Server
-      const response = await fetch(mpesaApiUrl, {
+      console.log("Initiating M-Pesa STK Push via proxy...");
+
+      const response = await fetch(mpesaProxyUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -94,26 +95,22 @@ export const mpesaService = {
           phone: request.phoneNumber,
           amount: request.amount,
           userId: user.id,
+          accountReference: request.accountReference || `WALLET-${user.id.slice(0, 8)}`,
+          transactionDesc: request.transactionDesc || "Wallet Deposit",
         }),
       });
 
-      // Check if function is deployed
-      if (response.status === 404) {
-        return {
-          success: false,
-          message: "M-Pesa service not available. Please contact support.",
-          error: "FUNCTION_NOT_DEPLOYED",
-        };
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error("M-Pesa proxy error:", errorData);
+        throw new Error(errorData.error || errorData.message || `Proxy error: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log("M-Pesa STK Response:", data);
 
-      if (!response.ok || !data.success) {
-        return {
-          success: false,
-          message: data.error || "Failed to initiate M-Pesa payment",
-          error: data.error,
-        };
+      if (!data.success) {
+        throw new Error(data.error || data.message || "STK Push failed");
       }
 
       return {
@@ -126,7 +123,7 @@ export const mpesaService = {
       console.error("M-Pesa deposit error:", error);
       return {
         success: false,
-        message: "An error occurred while processing your request",
+        message: error.message || "An error occurred while processing your request",
         error: error.message,
       };
     }

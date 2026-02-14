@@ -16,42 +16,43 @@ export const smsService = {
    */
   async sendSms(payload: SmsPayload): Promise<SmsResponse> {
     try {
-      // Use SMS API endpoint
-      const smsApiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sms-api`;
-      
-      const requestBody = {
-        to: payload.to,
-        message: payload.message,
-        username: import.meta.env.VITE_SMS_API_USERNAME || "abanremit",
-        psk: import.meta.env.VITE_SMS_API_KEY || "psk_43694655a0ea49719cd1fdda0ff0526b",
-      };
+      // Direct TalkSasa API call (bypass Supabase function)
+      const talksasaToken = "1956|W7r0b7vuSgcT2UqiYvFcKIodUOkSPlabpVtcVh4u7c347b80";
+      const talksasaEndpoint = "https://bulksms.talksasa.com/api/v3";
 
-      console.log("Sending SMS request:", {
-        to: requestBody.to,
-        messageLength: requestBody.message.length,
-        username: requestBody.username,
+      console.log("Sending SMS directly to TalkSasa:", {
+        to: payload.to,
+        messageLength: payload.message.length,
       });
 
-      const response = await fetch(smsApiUrl, {
+      const response = await fetch(`${talksasaEndpoint}/sms/send`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${talksasaToken}`,
+          "Accept": "application/json",
         },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({
+          recipient: payload.to,
+          sender_id: "ABAN_COOL",
+          message: payload.message,
+        }),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error("SMS API error response:", errorData);
-        throw new Error(`SMS API error (${response.status}): ${errorData.error || response.statusText}`);
+        console.error("TalkSasa API error:", errorData);
+        throw new Error(`TalkSasa API error (${response.status}): ${errorData.error || errorData.message || response.statusText}`);
       }
 
       const data = await response.json();
+      console.log("TalkSasa success:", data);
+      
       return {
         status: "sent",
-        message: "SMS sent successfully",
-        messageId: data.messageId,
-        demo: data.demo,
+        message: "SMS sent successfully via TalkSasa",
+        messageId: data.message_id || data.id || `SMS${Date.now()}`,
+        demo: false,
       };
     } catch (error) {
       console.error("SMS sending error:", error);
