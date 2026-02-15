@@ -134,18 +134,18 @@ export const mpesaService = {
    */
   async checkTransactionStatus(checkoutRequestId: string): Promise<MPesaTransaction | null> {
     try {
-      const { data, error } = await supabase
-        .from("mpesa_transactions")
+      const { data, error } = await (supabase
+        .from("mpesa_transactions" as any)
         .select("*")
         .eq("checkout_request_id", checkoutRequestId)
-        .single();
+        .single());
 
       if (error) {
         console.error("Error checking transaction status:", error);
         return null;
       }
 
-      return data as MPesaTransaction;
+      return data as unknown as MPesaTransaction;
     } catch (error) {
       console.error("Error checking transaction status:", error);
       return null;
@@ -157,19 +157,19 @@ export const mpesaService = {
    */
   async getUserTransactions(userId: string, limit = 50): Promise<MPesaTransaction[]> {
     try {
-      const { data, error } = await supabase
-        .from("mpesa_transactions")
+      const { data, error } = await (supabase
+        .from("mpesa_transactions" as any)
         .select("*")
         .eq("user_id", userId)
         .order("created_at", { ascending: false })
-        .limit(limit);
+        .limit(limit));
 
       if (error) {
         console.error("Error fetching transactions:", error);
         return [];
       }
 
-      return (data || []) as MPesaTransaction[];
+      return (data || []) as unknown as MPesaTransaction[];
     } catch (error) {
       console.error("Error fetching transactions:", error);
       return [];

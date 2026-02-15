@@ -42,7 +42,7 @@ const AgentTransferAgentPage = () => {
               { label: "Agent Wallet", value: walletId },
               { label: "Amount", value: `KES ${amount}.00` },
               { label: "Fee", value: `KES ${fee.toFixed(2)}` },
-              { label: "Your Balance", value: `KES ${((user?.balance ?? 245800) - Number(amount) - fee).toLocaleString()}.00` },
+              { label: "Your Balance", value: `KES ${((wallet?.balance ?? 0) - Number(amount) - fee).toLocaleString()}.00` },
               { label: "Date", value: new Date().toLocaleString() },
             ]}
             onDone={handleDone}
