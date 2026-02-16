@@ -38,10 +38,8 @@ serve(async (req) => {
     // Generate reference if not provided
     const txReference = reference || `AIRTIME-${Date.now()}`;
 
-    // Callback URL - Instalipa will call this when transaction completes
-    const callbackUrl = supabaseUrl 
-      ? `${supabaseUrl}/functions/v1/airtime-callback`
-      : "https://vnlevzndmktifkkdnrns.supabase.co/functions/v1/airtime-callback";
+    // Callback URL - hardcoded production endpoint
+    const callbackUrl = "https://abancool.com/functions/v1/airtime-callback_url";
 
     console.log("Instalipa purchase request:", { phoneNumber, amount, network, reference: txReference, callbackUrl });
 

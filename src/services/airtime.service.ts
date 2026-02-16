@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { transactionPinService } from "./transaction-pin.service";
+import { instalipaAirtimeService } from "./airtime/instalipa.service";
 
 export interface BuyAirtimeRequest {
   networkId: string;
@@ -23,8 +24,10 @@ export const airtimeService = {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) return { success: false, message: "User not authenticated", error: "AUTH_ERROR" };
 
-      if (request.amount < 10) return { success: false, message: "Minimum airtime amount is 10", error: "INVALID_AMOUNT" };
-      if (request.amount > 10000) return { success: false, message: "Maximum airtime amount is 10,000", error: "AMOUNT_TOO_HIGH" };
+      // Validate amount
+      if (request.amount < 10) return { success: false, message: "Minimum airtime amount is 10 KES", error: "INVALID_AMOUNT" };
+      if (request.amount > 10000) return { success: false, message: "Maximum airtime amount is 10,000 KES", error: "AMOUNT_TOO_HIGH" };
+      if (request.amount <= 0) return { success: false, message: "Amount must be positive", error: "INVALID_AMOUNT" };
 
       // Validate PIN
       const isPinValid = await transactionPinService.validatePin(request.pin);
@@ -37,45 +40,114 @@ export const airtimeService = {
 
       // Get network
       const { data: network, error: networkError } = await supabase
-        .from("airtime_networks").select("*").eq("id", request.networkId).eq("enabled", true).single();
-      if (networkError || !network) return { success: false, message: "Network not available", error: "NETWORK_NOT_FOUND" };
+        .from("airtime_networks").select("*").eq("id", request.networkId).single();
+      if (networkError || !network) return { success: false, message: "Network not found", error: "NETWORK_NOT_FOUND" };
+      if (!network.enabled) return { success: false, message: "Network not available", error: "NETWORK_DISABLED" };
 
       // Get fee
       const { data: feeData } = await supabase.from("fees").select("*").eq("transaction_type", "airtime").single();
       const fee = feeData ? Number(feeData.flat_fee) + (request.amount * Number(feeData.percentage_fee) / 100) : 0;
       const totalDeduction = request.amount + fee;
 
-      if (wallet.balance < totalDeduction) return { success: false, message: `Insufficient balance. Need KES ${totalDeduction.toFixed(2)}`, error: "INSUFFICIENT_BALANCE" };
+      // Check balance
+      if (wallet.balance < totalDeduction) {
+        return { success: false, message: `Insufficient balance. Need KES ${totalDeduction.toFixed(2)}`, error: "INSUFFICIENT_BALANCE" };
+      }
 
-      // Deduct from wallet
+      // Generate transaction reference
+      const transactionId = `AIRTIME-${Date.now()}`;
+
+      // Deduct from wallet atomically
       const newBalance = wallet.balance - totalDeduction;
       const { error: deductError } = await supabase.from("wallets").update({ balance: newBalance }).eq("id", wallet.id);
       if (deductError) throw deductError;
 
-      const transactionId = `AIR-${Date.now()}`;
-
-      // Create transaction
-      const { data: walletTx } = await supabase.from("transactions").insert({
+      // Create wallet transaction (pending)
+      const { data: walletTx, error: walletTxError } = await supabase.from("transactions").insert({
         sender_wallet_id: wallet.id,
         type: "airtime",
         amount: request.amount,
         fee: fee,
-        status: "completed",
+        status: "pending",
         balance_after: newBalance,
         metadata: { network: network.name, phone_number: request.phoneNumber },
+        reference: transactionId,
       } as any).select("receipt_reference").single();
 
-      // Create airtime transaction
-      const { data: airtimeTx } = await supabase.from("airtime_transactions").insert({
+      if (walletTxError) {
+        console.error("Failed to create wallet transaction:", walletTxError);
+        // Rollback balance
+        await supabase.from("wallets").update({ balance: wallet.balance }).eq("id", wallet.id);
+        throw walletTxError;
+      }
+
+      // Create airtime transaction (pending)
+      const { data: airtimeTx, error: airtimeTxError } = await supabase.from("airtime_transactions").insert({
         user_id: user.id,
         network_id: network.id,
         phone_number: request.phoneNumber,
         amount: request.amount,
         fee: fee,
-        status: "completed",
-      } as any).select("transaction_id").single();
+        status: "pending",
+        transaction_id: transactionId,
+      } as any).select("id").single();
 
-      // Handle agent commission
+      if (airtimeTxError) {
+        console.error("Failed to create airtime transaction:", airtimeTxError);
+        // Rollback balance
+        await supabase.from("wallets").update({ balance: wallet.balance }).eq("id", wallet.id);
+        throw airtimeTxError;
+      }
+
+      // Call Instalipa API via service
+      try {
+        const instalipaResponse = await instalipaAirtimeService.purchaseAirtime({
+          phoneNumber: request.phoneNumber,
+          amount: request.amount,
+          network: network.code,
+          reference: transactionId,
+        });
+
+        if (!instalipaResponse.success) {
+          console.error("Instalipa purchase failed:", instalipaResponse.message);
+          // Update transactions to failed
+          await supabase.from("airtime_transactions").update({ 
+            status: "failed", 
+            result_message: instalipaResponse.message 
+          }).eq("id", airtimeTx.id);
+          
+          await supabase.from("transactions").update({ status: "failed" }).eq("reference", transactionId);
+          
+          // Refund
+          await supabase.from("wallets").update({ balance: wallet.balance }).eq("id", wallet.id);
+          
+          return {
+            success: false,
+            message: instalipaResponse.message || "Airtime purchase failed",
+            error: instalipaResponse.error,
+          };
+        }
+      } catch (instalipaError: any) {
+        console.error("Instalipa API error:", instalipaError);
+        // Update transactions to failed
+        await supabase.from("airtime_transactions").update({ 
+          status: "failed", 
+          result_message: instalipaError.message 
+        }).eq("id", airtimeTx.id);
+        
+        await supabase.from("transactions").update({ status: "failed" }).eq("reference", transactionId);
+        
+        // Refund
+        await supabase.from("wallets").update({ balance: wallet.balance }).eq("id", wallet.id);
+        
+        return {
+          success: false,
+          message: instalipaError.message || "Failed to connect to airtime provider",
+          error: instalipaError.message,
+        };
+      }
+
+      // Handle agent commission (don't block on failure)
       if (request.agentId) {
         try {
           await supabase.rpc('calculate_and_credit_commission', {
@@ -85,31 +157,13 @@ export const airtimeService = {
             p_transaction_type: 'airtime',
           });
         } catch (commErr) {
-          console.error('Commission calculation failed:', commErr);
+          console.error('Commission calculation failed (non-blocking):', commErr);
         }
-      }
-
-      // Get profile for notification
-      const { data: profile } = await supabase.from("profiles").select("phone, full_name").eq("user_id", user.id).single();
-
-      try {
-        const { notificationService } = await import('./notification.service');
-        await notificationService.createNotification({
-          userId: user.id,
-          title: "Airtime Purchase Successful",
-          message: `Your airtime purchase of KES ${request.amount} for ${request.phoneNumber} (${network.name}) has been processed. Transaction ID: ${(walletTx as any)?.receipt_reference || (airtimeTx as any)?.transaction_id}`,
-          type: "transaction",
-          priority: "high",
-          sendSMS: true,
-          phoneNumber: (profile as any)?.phone,
-        });
-      } catch (notifError) {
-        console.error('Failed to create notification:', notifError);
       }
 
       return {
         success: true,
-        message: `Airtime of KES ${request.amount} sent to ${request.phoneNumber}`,
+        message: `Airtime purchase of KES ${request.amount} initiated for ${request.phoneNumber}. You will receive a notification when complete.`,
         transactionId,
         receiptReference: (walletTx as any)?.receipt_reference,
       };

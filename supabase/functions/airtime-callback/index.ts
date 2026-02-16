@@ -54,7 +54,7 @@ serve(async (req) => {
     // Find the airtime transaction
     const { data: airtimeTx, error: findError } = await supabase
       .from("airtime_transactions")
-      .select("*")
+      .select("*, wallets!inner(id, user_id, balance, wallet_id)")
       .eq("transaction_id", reference)
       .single();
 
@@ -63,6 +63,19 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ success: false, message: "Transaction not found" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 404 }
+      );
+    }
+
+    // Check if already processed (idempotency)
+    if (airtimeTx.status === "completed" || airtimeTx.status === "failed") {
+      console.log(`Transaction ${reference} already processed with status: ${airtimeTx.status}`);
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Callback already processed",
+          status: airtimeTx.status,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -80,7 +93,7 @@ serve(async (req) => {
       }
     }
 
-    // Update airtime transaction
+    // Update airtime transaction and wallet transaction
     const { error: updateError } = await supabase
       .from("airtime_transactions")
       .update({
@@ -94,6 +107,16 @@ serve(async (req) => {
       console.error("Error updating airtime transaction:", updateError);
       throw updateError;
     }
+
+    // Update wallet transaction status
+    await supabase
+      .from("transactions")
+      .update({
+        status: newStatus,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("reference", reference)
+      .eq("type", "airtime");
 
     // If failed, refund the user's wallet
     if (newStatus === "failed") {
@@ -112,15 +135,15 @@ serve(async (req) => {
         const { data: wallet } = await supabase
           .from("wallets")
           .select("*")
-          .eq("id", walletTx.wallet_id)
+          .eq("user_id", airtimeTx.user_id)
           .single();
 
         if (wallet) {
           // Refund amount + fee
-          const refundAmount = Math.abs(walletTx.amount) + (walletTx.fee || 0);
+          const refundAmount = Math.abs(airtimeTx.amount) + (airtimeTx.fee || 0);
           const newBalance = wallet.balance + refundAmount;
 
-          // Update wallet balance
+          // Update wallet balance atomically
           await supabase
             .from("wallets")
             .update({
@@ -129,21 +152,20 @@ serve(async (req) => {
             })
             .eq("id", wallet.id);
 
-          // Create refund transaction
+          // Create refund transaction with metadata preserved
           await supabase
             .from("transactions")
             .insert({
-              user_id: wallet.user_id,
-              wallet_id: wallet.id,
+              sender_wallet_id: wallet.id,
               type: "refund",
               amount: refundAmount,
               balance_after: newBalance,
-              description: `Airtime purchase refund - ${resultMessage}`,
+              metadata: walletTx.metadata,
               reference: `REFUND-${reference}`,
               status: "completed",
             });
 
-          // Send notification
+          // Send failure notification
           await supabase
             .from("notifications")
             .insert({
@@ -164,16 +186,26 @@ serve(async (req) => {
       const { data: wallet } = await supabase
         .from("wallets")
         .select("user_id")
-        .eq("id", airtimeTx.wallet_id)
+        .eq("user_id", airtimeTx.user_id)
         .single();
 
       if (wallet) {
+        // Get network name from metadata
+        const { data: walletTx } = await supabase
+          .from("transactions")
+          .select("metadata")
+          .eq("reference", reference)
+          .eq("type", "airtime")
+          .single();
+
+        const networkName = walletTx?.metadata?.network || "Unknown";
+
         await supabase
           .from("notifications")
           .insert({
             user_id: wallet.user_id,
             title: "Airtime Purchase Successful",
-            message: `Successfully purchased ${airtimeTx.amount} KES airtime for ${airtimeTx.phone_number}`,
+            message: `Successfully purchased ${airtimeTx.amount} KES airtime for ${airtimeTx.phone_number} (${networkName})`,
             type: "transaction",
             priority: "normal",
           });

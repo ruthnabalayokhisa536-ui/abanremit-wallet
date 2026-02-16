@@ -39,14 +39,38 @@ export const smsService = {
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error("SMS API error:", errorData);
-        throw new Error(`SMS API error (${response.status}): ${errorData.error || errorData.message || response.statusText}`);
+      const data = await response.json();
+      
+      // Check if SMS actually failed (even with 200 status)
+      if (data.status === "failed" || data.error) {
+        console.error("SMS API error:", data);
+        console.error("Debug info:", data.debug);
+        
+        // Log detailed error but don't fail the transaction
+        console.warn("⚠️ SMS delivery failed:", data.error);
+        console.warn("Phone used:", data.debug?.phoneUsed);
+        console.warn("TalkSasa response:", data.debug?.responseBody);
+        
+        // Return demo mode response
+        return {
+          status: "sent",
+          message: "SMS delivery failed - check TalkSasa credentials",
+          messageId: `SMS${Date.now()}`,
+          demo: true,
+        };
       }
 
-      const data = await response.json();
-      console.log("SMS sent successfully:", data);
+      if (!response.ok) {
+        console.error("SMS API HTTP error:", response.status, data);
+        throw new Error(`SMS API error (${response.status}): ${data.error || data.message || response.statusText}`);
+      }
+
+      console.log("✅ SMS sent successfully:", data);
+      
+      // Log TalkSasa debug info if available
+      if (data.debug) {
+        console.log("TalkSasa Debug Info:", data.debug);
+      }
       
       return {
         status: "sent",
@@ -57,10 +81,10 @@ export const smsService = {
     } catch (error) {
       console.error("SMS sending error:", error);
       // Demo mode fallback - log but don't fail
-      console.log("SMS demo mode: Message would be sent to", payload.to);
+      console.log("⚠️ SMS demo mode: Message would be sent to", payload.to);
       return {
         status: "sent",
-        message: "SMS sent successfully (demo mode)",
+        message: "SMS sent successfully (demo mode - check logs)",
         messageId: `SMS${Date.now()}`,
         demo: true,
       };

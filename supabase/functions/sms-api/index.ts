@@ -46,14 +46,37 @@ serve(async (req: Request) => {
       );
     }
 
-    // Validate phone number format (254xxxxxxxxx)
+    // Validate phone number format (254xxxxxxxxx) - relaxed validation
     console.log("Validating phone number:", to);
-    if (!to || !/^254\d{9}$/.test(to)) {
-      console.error("Phone validation failed. Received:", to);
+    if (!to) {
+      console.error("Phone validation failed: No phone number provided");
       return new Response(
         JSON.stringify({ 
-          error: "Invalid phone number format. Use 254xxxxxxxxx",
+          error: "Phone number is required",
+        }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
+    }
+    
+    // Clean and format phone number
+    let cleanedPhone = to.replace(/\D/g, "");
+    if (cleanedPhone.startsWith("0")) {
+      cleanedPhone = "254" + cleanedPhone.substring(1);
+    } else if (!cleanedPhone.startsWith("254")) {
+      cleanedPhone = "254" + cleanedPhone;
+    }
+    
+    // Validate cleaned phone
+    if (!/^254\d{9}$/.test(cleanedPhone)) {
+      console.error("Phone validation failed after cleaning. Received:", to, "Cleaned:", cleanedPhone);
+      return new Response(
+        JSON.stringify({ 
+          error: "Invalid phone number format. Use 254xxxxxxxxx or 07xxxxxxxx",
           received: to,
+          cleaned: cleanedPhone,
           expected: "254xxxxxxxxx (12 digits total)"
         }),
         {
@@ -62,6 +85,8 @@ serve(async (req: Request) => {
         }
       );
     }
+    
+    console.log("Phone number validated and cleaned:", cleanedPhone);
 
     // Validate message
     console.log("Validating message. Length:", message?.length);
@@ -87,7 +112,7 @@ serve(async (req: Request) => {
     // Send SMS via TalkSasa Bulk SMS API
     // TalkSasa expects: phone, message, sender_id
     const talksasaPayload = {
-      phone: to,
+      phone: cleanedPhone, // Use cleaned phone number
       message: message,
       sender_id: "ABAN_COOL",
     };
@@ -109,8 +134,31 @@ serve(async (req: Request) => {
     console.log("TalkSasa Response Status:", response.status);
     console.log("TalkSasa Response:", JSON.stringify(data));
 
-    if (!response.ok) {
-      throw new Error(data.message || data.error || "SMS sending failed");
+    // Check for TalkSasa-specific error indicators
+    // TalkSasa may return 200 but with error status in body
+    if (!response.ok || data.status === "error" || data.error) {
+      const errorMsg = data.message || data.error || "SMS sending failed";
+      console.error("TalkSasa API Error:", errorMsg);
+      console.error("Full error response:", JSON.stringify(data));
+      
+      // Return detailed error for debugging
+      return new Response(
+        JSON.stringify({
+          status: "failed",
+          error: errorMsg,
+          provider: "TalkSasa",
+          debug: {
+            httpStatus: response.status,
+            responseBody: data,
+            phoneUsed: cleanedPhone,
+            messageLength: message.length,
+          }
+        }),
+        {
+          status: response.ok ? 200 : response.status, // Return 200 even on SMS failure for client handling
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        }
+      );
     }
 
     // TalkSasa successful response
@@ -121,6 +169,11 @@ serve(async (req: Request) => {
         messageId: data.message_id || data.id || `SMS${Date.now()}`,
         provider: "TalkSasa",
         data: data,
+        debug: {
+          talksasaStatus: response.status,
+          talksasaResponse: data,
+          phoneUsed: cleanedPhone,
+        }
       }),
       {
         status: 200,

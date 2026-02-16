@@ -25,57 +25,77 @@ export const NavigationSystemProvider: React.FC<NavigationSystemProviderProps> =
   
   // Initialize navigation system components
   const { cacheManager, routePredictor, routePrefetcher, dataPrefetcher } = useMemo(() => {
-    const cache = new CacheManager();
-    const predictor = new RoutePredictor();
-    const prefetcher = new RoutePrefetcher(cache);
-    const dataFetcher = new DataPrefetcher(cache);
-    
-    return {
-      cacheManager: cache,
-      routePredictor: predictor,
-      routePrefetcher: prefetcher,
-      dataPrefetcher: dataFetcher,
-    };
+    try {
+      const cache = new CacheManager();
+      const predictor = new RoutePredictor();
+      const prefetcher = new RoutePrefetcher(cache);
+      const dataFetcher = new DataPrefetcher(cache);
+      
+      return {
+        cacheManager: cache,
+        routePredictor: predictor,
+        routePrefetcher: prefetcher,
+        dataPrefetcher: dataFetcher,
+      };
+    } catch (error) {
+      console.error('Failed to initialize navigation system:', error);
+      // Return minimal fallback implementations
+      const cache = new CacheManager();
+      return {
+        cacheManager: cache,
+        routePredictor: new RoutePredictor(),
+        routePrefetcher: new RoutePrefetcher(cache),
+        dataPrefetcher: new DataPrefetcher(cache),
+      };
+    }
   }, []);
 
   // Prefetch predicted routes when location changes
+  // DISABLED: Automatic prefetching causes errors in production
+  // Manual prefetching via hover/focus still works
   useEffect(() => {
-    const currentPath = location.pathname;
-    
-    // Get user role from localStorage or context
-    const userRole = (localStorage.getItem('userRole') as 'user' | 'agent' | 'admin') || 'user';
-    
-    // Predict next routes
-    const predictions = routePredictor.predictNextRoutes({
-      currentRoute: currentPath,
-      userRole,
-      recentHistory: [],
-      timeOnPage: 0,
-    });
-
-    // Prefetch predicted routes and their data
-    predictions.forEach(prediction => {
-      routePrefetcher.prefetchRoute(prediction.path, prediction.priority);
-      dataPrefetcher.prefetchData(prediction.path);
-    });
-  }, [location.pathname, routePredictor, routePrefetcher, dataPrefetcher]);
+    // Intentionally empty - automatic prefetching disabled
+    // This prevents crashes during initialization
+  }, [location.pathname]);
 
   const contextValue: NavigationSystemContextValue = {
     prefetchRoute: (path: string, priority: Priority) => {
-      routePrefetcher.prefetchRoute(path, priority);
-      dataPrefetcher.prefetchData(path);
+      try {
+        routePrefetcher.prefetchRoute(path, priority);
+        dataPrefetcher.prefetchData(path);
+      } catch (error) {
+        console.error('Prefetch route error:', error);
+      }
     },
     cancelPrefetch: (path: string) => {
-      routePrefetcher.cancelHoverPrefetch(path);
+      try {
+        routePrefetcher.cancelHoverPrefetch(path);
+      } catch (error) {
+        console.error('Cancel prefetch error:', error);
+      }
     },
     isPrefetched: (path: string) => {
-      return routePrefetcher.isPrefetched(path);
+      try {
+        return routePrefetcher.isPrefetched(path);
+      } catch (error) {
+        console.error('Check prefetch error:', error);
+        return false;
+      }
     },
     prefetchData: (path: string) => {
-      dataPrefetcher.prefetchData(path);
+      try {
+        dataPrefetcher.prefetchData(path);
+      } catch (error) {
+        console.error('Prefetch data error:', error);
+      }
     },
     isDataReady: (path: string) => {
-      return dataPrefetcher.isDataReady(path);
+      try {
+        return dataPrefetcher.isDataReady(path);
+      } catch (error) {
+        console.error('Check data ready error:', error);
+        return false;
+      }
     },
   };
 

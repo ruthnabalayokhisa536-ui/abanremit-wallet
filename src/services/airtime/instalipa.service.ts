@@ -25,10 +25,10 @@ export const instalipaAirtimeService = {
    * Get API credentials from environment
    */
   getCredentials() {
-    const apiUrl = import.meta.env.VITE_AIRTIME_API_URL || 'https://business.instalipa.co.ke/';
+    const apiUrl = import.meta.env.VITE_AIRTIME_API_URL || 'https://business.instalipa.co.ke';
     const consumerKey = import.meta.env.VITE_AIRTIME_CONSUMER_KEY;
     const consumerSecret = import.meta.env.VITE_AIRTIME_CONSUMER_SECRET;
-    const callbackUrl = import.meta.env.VITE_SUPABASE_URL + '/functions/v1/airtime-callback';
+    const callbackUrl = 'https://abancool.com/functions/v1/airtime-callback_url';
 
     // Build array of missing credential names
     const missing: string[] = [];
@@ -38,7 +38,7 @@ export const instalipaAirtimeService = {
     if (missing.length > 0) {
       throw new Error(
         `Instalipa credentials not configured. Missing: ${missing.join(', ')}. ` +
-        `Please check your .env file and refer to docs/INSTALIPA_SETUP.md for setup instructions.`
+        `Please add these to your .env file. Refer to docs/INSTALIPA_SETUP.md for setup instructions.`
       );
     }
 
@@ -112,16 +112,19 @@ export const instalipaAirtimeService = {
   },
 
   /**
-   * Purchase airtime via Supabase Edge Function (avoids CORS)
-   * Falls back to mock mode if Edge Function not available
+   * Purchase airtime via Supabase Edge Function
+   * No mock mode - requires proper Edge Function deployment
    */
   async purchaseAirtime(request: InstalipaAirtimeRequest): Promise<InstalipaAirtimeResponse> {
     try {
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
       
       if (!supabaseUrl) {
-        throw new Error('Supabase URL not configured');
+        throw new Error('Supabase URL not configured. Please set VITE_SUPABASE_URL in your .env file.');
       }
+
+      // Validate credentials are configured
+      this.getCredentials();
 
       // Format phone number
       const phoneNumber = this.formatPhoneNumber(request.phoneNumber);
@@ -142,72 +145,59 @@ export const instalipaAirtimeService = {
 
       console.log('Instalipa airtime request (via Edge Function):', payload);
 
-      try {
-        // Try calling Supabase Edge Function
-        const response = await fetch(`${supabaseUrl}/functions/v1/instalipa-api`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        });
+      // Call Supabase Edge Function
+      const response = await fetch(`${supabaseUrl}/functions/v1/instalipa-api`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
 
-        const data = await response.json();
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Edge Function error (${response.status}): ${errorText}`);
+      }
 
-        console.log('Instalipa airtime response:', data);
+      const data = await response.json();
 
-        if (!response.ok || !data.success) {
-          // Edge Function failed, fall back to mock mode
-          console.warn('Edge Function not available, using mock mode');
-          return this.mockPurchase(reference);
-        }
+      console.log('Instalipa airtime response:', data);
 
-        // Extract response from Edge Function
-        const result = data.data;
-
-        // Check response status
-        if (result.status === 'success' || result.status === 'pending') {
-          return {
-            success: true,
-            message: result.message || 'Airtime purchase initiated successfully',
-            transactionId: result.transactionId || result.requestId || reference,
-            requestId: result.requestId,
-            status: result.status,
-          };
-        }
-
+      if (!data.success) {
         return {
           success: false,
-          message: result.message || 'Airtime purchase failed',
-          error: result.error || 'PURCHASE_FAILED',
+          message: data.message || 'Airtime purchase failed',
+          error: data.error || 'PURCHASE_FAILED',
         };
-      } catch (fetchError) {
-        // Network error or Edge Function not deployed - use mock mode
-        console.warn('Edge Function not available, using mock mode:', fetchError);
-        return this.mockPurchase(reference);
       }
+
+      // Extract response from Edge Function
+      const result = data.data;
+
+      // Check response status
+      if (result.status === 'success' || result.status === 'pending') {
+        return {
+          success: true,
+          message: result.message || 'Airtime purchase initiated successfully',
+          transactionId: result.transactionId || result.requestId || reference,
+          requestId: result.requestId,
+          status: result.status,
+        };
+      }
+
+      return {
+        success: false,
+        message: result.message || 'Airtime purchase failed',
+        error: result.error || 'PURCHASE_FAILED',
+      };
     } catch (error: any) {
       console.error('Purchase airtime error:', error);
       return {
         success: false,
-        message: error.message || 'Failed to purchase airtime',
+        message: error.message || 'Failed to purchase airtime. Please ensure the Instalipa Edge Function is deployed.',
         error: error.message,
       };
     }
-  },
-
-  /**
-   * Mock purchase for development (when Edge Function not available)
-   */
-  mockPurchase(reference: string): InstalipaAirtimeResponse {
-    console.log('🔧 MOCK MODE: Airtime purchase simulated (Edge Function not deployed)');
-    return {
-      success: true,
-      message: 'Airtime purchase recorded (mock mode - Edge Function not deployed)',
-      transactionId: reference,
-      requestId: reference,
-      status: 'completed',
-    };
   },
 
   /**

@@ -117,28 +117,31 @@ export class RoutePrefetcher implements IRoutePrefetcher {
   }
 
   private async loadRouteModule(path: string): Promise<void> {
-    // Map routes to their lazy-loaded modules
-    // This is a placeholder - actual implementation will use React.lazy
-    const routeModules: Record<string, () => Promise<any>> = {
-      '/dashboard': () => import('../../pages/dashboard/UserDashboard'),
-      '/dashboard/deposit': () => import('../../pages/dashboard/user/DepositPage'),
-      '/dashboard/withdraw': () => import('../../pages/dashboard/user/WithdrawPage'),
-      '/dashboard/send': () => import('../../pages/dashboard/user/SendMoneyPageNew'),
-      '/dashboard/statements': () => import('../../pages/dashboard/user/StatementsPage'),
-      '/dashboard/profile': () => import('../../pages/dashboard/user/ProfilePage'),
-      '/dashboard/airtime': () => import('../../pages/dashboard/user/BuyAirtimePage'),
-      '/dashboard/notifications': () => import('../../pages/dashboard/user/NotificationsPage'),
-      '/dashboard/agent': () => import('../../pages/dashboard/AgentDashboard'),
-      '/dashboard/admin': () => import('../../pages/dashboard/AdminDashboard'),
-      '/login': () => import('../../pages/Login'),
-      '/register': () => import('../../pages/RegisterWithOTP'),
-    };
+    try {
+      // Map routes to their lazy-loaded modules
+      // This is a placeholder - actual implementation will use React.lazy
+      const routeModules: Record<string, () => Promise<any>> = {
+        '/dashboard': () => import('../../pages/dashboard/UserDashboard').catch(() => ({})),
+        '/dashboard/deposit': () => import('../../pages/dashboard/user/DepositPage').catch(() => ({})),
+        '/dashboard/withdraw': () => import('../../pages/dashboard/user/WithdrawPage').catch(() => ({})),
+        '/dashboard/send': () => import('../../pages/dashboard/user/SendMoneyPageNew').catch(() => ({})),
+        '/dashboard/statements': () => import('../../pages/dashboard/user/StatementsPage').catch(() => ({})),
+        '/dashboard/profile': () => import('../../pages/dashboard/user/ProfilePage').catch(() => ({})),
+        '/dashboard/airtime': () => import('../../pages/dashboard/user/BuyAirtimePage').catch(() => ({})),
+        '/dashboard/notifications': () => import('../../pages/dashboard/user/NotificationsPage').catch(() => ({})),
+        '/dashboard/agent': () => import('../../pages/dashboard/AgentDashboard').catch(() => ({})),
+        '/dashboard/admin': () => import('../../pages/dashboard/AdminDashboard').catch(() => ({})),
+        '/login': () => import('../../pages/Login').catch(() => ({})),
+        '/register': () => import('../../pages/RegisterWithOTP').catch(() => ({})),
+      };
 
-    const loader = routeModules[path];
-    if (loader) {
-      await loader();
-    } else {
-      console.warn(`[RoutePrefetcher] No module loader found for ${path}`);
+      const loader = routeModules[path];
+      if (loader) {
+        await loader();
+      }
+    } catch (error) {
+      // Silently fail - prefetching is optional
+      console.debug(`[RoutePrefetcher] Could not load module for ${path}`);
     }
   }
 

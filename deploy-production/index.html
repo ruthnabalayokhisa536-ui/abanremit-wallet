@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <base href="/" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AbanRemit - Mobile Money & Remittance Platform</title>
+    <meta name="description" content="AbanRemit - Secure mobile money transfers, airtime purchases, and remittance services for East Africa" />
+    <meta name="author" content="AbanRemit" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#1e40af" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="AbanRemit" />
+    
+    <!-- Mobile Optimization -->
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="HandheldFriendly" content="true" />
+    <meta name="MobileOptimized" content="width" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes, viewport-fit=cover" />
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" href="/icon-192.svg" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+
+    <meta property="og:title" content="AbanRemit - Mobile Money Platform" />
+    <meta property="og:description" content="Secure mobile money transfers, airtime purchases, and remittance services" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/icon-512.svg" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@AbanRemit" />
+    <meta name="twitter:image" content="/icon-512.svg" />
+    
+    <!-- Security Headers -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https://vnlevzndmktifkkdnrns.supabase.co wss://vnlevzndmktifkkdnrns.supabase.co https://mpesa-proxy-server-2.onrender.com https://v6.exchangerate-api.com https://api.stripe.com https://business.instalipa.co.ke;" />
+
+    <!-- Fast Loading Screen -->
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { 
+        height: 100%; 
+        background: #1e40af; 
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      
+      #loading-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        transition: opacity 0.3s ease-out;
+      }
+      
+      #loading-screen.loaded {
+        opacity: 0;
+        pointer-events: none;
+      }
+      
+      .logo {
+        width: 80px;
+        height: 80px;
+        background: white;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        font-weight: bold;
+        color: #1e40af;
+        margin-bottom: 24px;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        animation: pulse 2s ease-in-out infinite;
+      }
+      
+      @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+      }
+      
+      .app-name {
+        font-size: 28px;
+        font-weight: 600;
+        color: white;
+        margin-bottom: 8px;
+      }
+      
+      .tagline {
+        font-size: 14px;
+        color: rgba(255,255,255,0.8);
+        margin-bottom: 32px;
+      }
+      
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(255,255,255,0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+      
+      .loading-text {
+        margin-top: 16px;
+        font-size: 13px;
+        color: rgba(255,255,255,0.9);
+        animation: fade 1.5s ease-in-out infinite;
+      }
+      
+      @keyframes fade {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.5; }
+      }
+      
+      #root {
+        min-height: 100vh;
+        background: hsl(210, 20%, 98%);
+      }
+    </style>
+    <script>
+      window.addEventListener('load', function() {
+        setTimeout(function() {
+          var loader = document.getElementById('loading-screen');
+          if (loader) {
+            loader.classList.add('loaded');
+            setTimeout(function() { loader.remove(); }, 300);
+          }
+        }, 100);
+      });
+    </script>
+    <script type="module" crossorigin src="/assets/index-BEextJzm.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-fkB7mLyV.css">
+  <link rel="manifest" href="/manifest.webmanifest"><script id="vite-plugin-pwa:register-sw" src="/registerSW.js"></script></head>
+
+  <body>
+    <div id="loading-screen">
+      <div class="logo">AR</div>
+      <div class="app-name">AbanRemit</div>
+      <div class="tagline">Mobile Money & Remittance</div>
+      <div class="spinner"></div>
+      <div class="loading-text">Loading your wallet...</div>
+    </div>
+    
+    <div id="root"></div>
+  </body>
+</html>

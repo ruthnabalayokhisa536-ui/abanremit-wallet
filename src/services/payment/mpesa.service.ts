@@ -39,6 +39,39 @@ export interface MPesaTransaction {
  */
 export const mpesaService = {
   /**
+   * Warm up M-Pesa proxy server (prevents cold start timeout)
+   */
+  async warmupProxy(proxyUrl: string): Promise<boolean> {
+    try {
+      console.log("Warming up M-Pesa proxy server...");
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout for warmup
+
+      const response = await fetch(`${proxyUrl.replace('/stkpush', '')}/health`, {
+        method: "GET",
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        console.log("✅ M-Pesa proxy warmed up successfully");
+        return true;
+      }
+      
+      console.warn("⚠️ Proxy warmup returned non-OK status:", response.status);
+      return false;
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.warn("⚠️ Proxy warmup timeout - will retry with main request");
+      } else {
+        console.warn("⚠️ Proxy warmup failed:", error.message);
+      }
+      return false;
+    }
+  },
+
+  /**
    * Initiate M-Pesa STK Push for deposit (via Render Proxy)
    */
   async initiateDeposit(request: MPesaDepositRequest): Promise<MPesaDepositResponse> {
@@ -84,51 +117,96 @@ export const mpesaService = {
       // Use M-Pesa Proxy Server on Render
       const mpesaProxyUrl = "https://mpesa-proxy-server-2.onrender.com/stkpush";
 
+      // Warm up proxy first (prevents cold start timeout)
+      await this.warmupProxy(mpesaProxyUrl);
+
       console.log("Initiating M-Pesa STK Push via proxy...");
 
-      const response = await fetch(mpesaProxyUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          phone: request.phoneNumber,
-          amount: request.amount,
-          userId: user.id,
-          accountReference: request.accountReference || `WALLET-${user.id.slice(0, 8)}`,
-          transactionDesc: request.transactionDesc || "Wallet Deposit",
-        }),
-      });
+      // Retry logic with exponential backoff
+      let lastError: Error | null = null;
+      const maxRetries = 2;
+      
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          console.log(`Attempt ${attempt}/${maxRetries}...`);
+          
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 90000); // 90 second timeout
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error("M-Pesa proxy error:", errorData);
-        throw new Error(errorData.error || errorData.message || `Proxy error: ${response.status}`);
+          const response = await fetch(mpesaProxyUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              phone: request.phoneNumber,
+              amount: request.amount,
+              userId: user.id,
+              accountReference: request.accountReference || `WALLET-${user.id.slice(0, 8)}`,
+              transactionDesc: request.transactionDesc || "Wallet Deposit",
+            }),
+            signal: controller.signal,
+          });
+
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error("M-Pesa proxy error:", errorData);
+            throw new Error(errorData.error || errorData.message || `Proxy error: ${response.status}`);
+          }
+
+          const data = await response.json();
+          console.log("M-Pesa STK Response:", data);
+
+          if (!data.success) {
+            throw new Error(data.error || data.message || "STK Push failed");
+          }
+
+          // Success! Show detailed success message
+          const successMessage = data.checkoutRequestId 
+            ? `✅ STK Push sent successfully!\n\n📱 Check your phone (${this.formatPhoneNumber(request.phoneNumber)})\n💳 Enter your M-Pesa PIN to complete payment\n\n⏱️ You have 60 seconds to complete the transaction`
+            : "STK Push sent. Please check your phone and enter your M-Pesa PIN.";
+
+          return {
+            success: true,
+            message: successMessage,
+            checkoutRequestId: data.checkoutRequestId,
+            merchantRequestId: data.merchantRequestId,
+          };
+        } catch (error: any) {
+          lastError = error;
+          
+          if (error.name === 'AbortError') {
+            console.error(`Attempt ${attempt} timed out`);
+            if (attempt < maxRetries) {
+              console.log("Retrying after timeout...");
+              await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
+              continue;
+            }
+          } else {
+            // Non-timeout error, don't retry
+            throw error;
+          }
+        }
       }
 
-      const data = await response.json();
-      console.log("M-Pesa STK Response:", data);
-
-      if (!data.success) {
-        throw new Error(data.error || data.message || "STK Push failed");
-      }
-
-      // Show detailed success message
-      const successMessage = data.checkoutRequestId 
-        ? `✅ STK Push sent successfully!\n\n📱 Check your phone (${this.formatPhoneNumber(request.phoneNumber)})\n💳 Enter your M-Pesa PIN to complete payment\n\n⏱️ You have 60 seconds to complete the transaction`
-        : "STK Push sent. Please check your phone and enter your M-Pesa PIN.";
-
-      return {
-        success: true,
-        message: successMessage,
-        checkoutRequestId: data.checkoutRequestId,
-        merchantRequestId: data.merchantRequestId,
-      };
+      // All retries failed
+      throw lastError || new Error("STK Push failed after retries");
     } catch (error: any) {
       console.error("M-Pesa deposit error:", error);
+      
+      let userMessage = "An error occurred while processing your request";
+      
+      if (error.name === 'AbortError') {
+        userMessage = "⏱️ Request timed out. The M-Pesa service may be slow. Please wait a moment and check your phone - the STK push may still arrive. If not, please try again.";
+      } else if (error.message.includes("proxy") || error.message.includes("Proxy")) {
+        userMessage = "🔄 M-Pesa service is temporarily slow. Please try again in a moment.";
+      }
+      
       return {
         success: false,
-        message: error.message || "An error occurred while processing your request",
+        message: userMessage,
         error: error.message,
       };
     }

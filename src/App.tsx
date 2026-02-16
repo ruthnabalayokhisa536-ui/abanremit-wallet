@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { NavigationSystemProvider } from "@/contexts/NavigationSystemContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 // Eager load ALL pages — zero loading spinners
 import Login from "./pages/Login";
@@ -50,70 +52,74 @@ const queryClient = new QueryClient();
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
 
-        <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<RegisterWithOTP />} />
-            <Route path="/auth/callback" element={<AuthCallback />} />
+          <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <NavigationSystemProvider>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/" element={<Navigate to="/login" replace />} />
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<RegisterWithOTP />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
 
-            {/* ================= USER ROUTES ================= */}
-            <Route path="/dashboard">
-              <Route index element={<UserDashboard />} />
-              <Route path="deposit" element={<DepositPage />} />
-              <Route path="withdraw" element={<WithdrawPage />} />
-              <Route path="send" element={<SendMoneyPage />} />
-              <Route path="airtime" element={<BuyAirtimePage />} />
-              <Route path="statements" element={<StatementsPage />} />
-              <Route path="notifications" element={<NotificationsPage />} />
-              <Route path="profile" element={<ProfilePage />} />
-              <Route path="setup-pin" element={<SetupPinPage />} />
-              <Route path="kyc-verification" element={<KYCVerificationPage />} />
-            </Route>
+              {/* ================= USER ROUTES ================= */}
+              <Route path="/dashboard">
+                <Route index element={<UserDashboard />} />
+                <Route path="deposit" element={<DepositPage />} />
+                <Route path="withdraw" element={<WithdrawPage />} />
+                <Route path="send" element={<SendMoneyPage />} />
+                <Route path="airtime" element={<BuyAirtimePage />} />
+                <Route path="statements" element={<StatementsPage />} />
+                <Route path="notifications" element={<NotificationsPage />} />
+                <Route path="profile" element={<ProfilePage />} />
+                <Route path="setup-pin" element={<SetupPinPage />} />
+                <Route path="kyc-verification" element={<KYCVerificationPage />} />
+              </Route>
 
-            {/* ================= AGENT ROUTES ================= */}
-            <Route path="/agent">
-              <Route index element={<AgentDashboard />} />
-              <Route path="deposit" element={<AgentDepositPage />} />
-              <Route path="withdraw" element={<AgentWithdrawPage />} />
-              <Route path="transfer" element={<AgentTransferPage />} />
-              <Route path="transfer-agent" element={<AgentTransferAgentPage />} />
-              <Route path="transfer-phone" element={<AgentTransferPhonePage />} />
-              <Route path="sell-airtime" element={<AgentSellAirtimePage />} />
-              <Route path="commissions" element={<AgentCommissionsPage />} />
-              <Route path="statements" element={<AgentStatementsPage />} />
-              <Route path="notifications" element={<AgentNotificationsPage />} />
-            </Route>
+              {/* ================= AGENT ROUTES ================= */}
+              <Route path="/agent">
+                <Route index element={<AgentDashboard />} />
+                <Route path="deposit" element={<AgentDepositPage />} />
+                <Route path="withdraw" element={<AgentWithdrawPage />} />
+                <Route path="transfer" element={<AgentTransferPage />} />
+                <Route path="transfer-agent" element={<AgentTransferAgentPage />} />
+                <Route path="transfer-phone" element={<AgentTransferPhonePage />} />
+                <Route path="sell-airtime" element={<AgentSellAirtimePage />} />
+                <Route path="commissions" element={<AgentCommissionsPage />} />
+                <Route path="statements" element={<AgentStatementsPage />} />
+                <Route path="notifications" element={<AgentNotificationsPage />} />
+              </Route>
 
-            {/* ================= ADMIN ROUTES ================= */}
-            <Route path="/admin">
-              <Route index element={<AdminDashboard />} />
-              <Route path="users" element={<AdminUsersPage />} />
-              <Route path="agents" element={<AdminAgentsPage />} />
-              <Route path="bulk-sms" element={<AdminBulkSMSPage />} />
-              <Route path="deposits" element={<AdminDepositsPage />} />
-              <Route path="withdrawals" element={<AdminTransactionListPage type="withdrawal" />} />
-              <Route path="transfers" element={<AdminTransactionListPage type="transfer" />} />
-              <Route path="statements" element={<AdminStatementsPage />} />
-              <Route path="reports" element={<AdminReportsPage />} />
-              <Route path="fees" element={<AdminFeesPage />} />
-              <Route path="currencies" element={<AdminCurrenciesPage />} />
-              <Route path="airtime" element={<AdminAirtimePage />} />
-              <Route path="actions" element={<AdminActionsPage />} />
-              <Route path="audit" element={<AdminAuditPage />} />
-            </Route>
+              {/* ================= ADMIN ROUTES ================= */}
+              <Route path="/admin">
+                <Route index element={<AdminDashboard />} />
+                <Route path="users" element={<AdminUsersPage />} />
+                <Route path="agents" element={<AdminAgentsPage />} />
+                <Route path="bulk-sms" element={<AdminBulkSMSPage />} />
+                <Route path="deposits" element={<AdminDepositsPage />} />
+                <Route path="withdrawals" element={<AdminTransactionListPage type="withdrawal" />} />
+                <Route path="transfers" element={<AdminTransactionListPage type="transfer" />} />
+                <Route path="statements" element={<AdminStatementsPage />} />
+                <Route path="reports" element={<AdminReportsPage />} />
+                <Route path="fees" element={<AdminFeesPage />} />
+                <Route path="currencies" element={<AdminCurrenciesPage />} />
+                <Route path="airtime" element={<AdminAirtimePage />} />
+                <Route path="actions" element={<AdminActionsPage />} />
+                <Route path="audit" element={<AdminAuditPage />} />
+              </Route>
 
-            {/* 404 */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </HashRouter>
-      </TooltipProvider>
-    </QueryClientProvider>
+              {/* 404 */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            </NavigationSystemProvider>
+          </HashRouter>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
