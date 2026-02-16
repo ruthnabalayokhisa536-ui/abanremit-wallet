@@ -85,13 +85,13 @@ serve(async (req) => {
         status: 200,
       }
     );
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("M-Pesa callback error:", error);
     return new Response(
       JSON.stringify({
         ResultCode: 1,
         ResultDesc: "Failed",
-        error: error.message,
+        error: error instanceof Error ? error.message : "Unknown error",
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

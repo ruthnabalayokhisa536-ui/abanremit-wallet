@@ -23,16 +23,13 @@ export function useProfile() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user || cancelled) {
-          if (!cancelled) {
-            setProfile(null);
-            setLoading(false);
-          }
+          if (!cancelled) { setProfile(null); setLoading(false); }
           return;
         }
 
         const { data, error } = await supabase
           .from("profiles")
-          .select("id, user_id, full_name, phone, email, kyc_status, profile_photo_url")
+          .select("id, user_id, full_name, phone, email, kyc_status, profile_image_url")
           .eq("user_id", user.id)
           .limit(1)
           .maybeSingle();
@@ -43,27 +40,28 @@ export function useProfile() {
           return;
         }
 
-        // CRITICAL: Validate returned data matches authenticated user
-        if (data && data.user_id !== user.id) {
-          console.error("[useProfile] SECURITY: Profile user_id mismatch!", {
-            expected: user.id,
-            received: data.user_id,
-            timestamp: new Date().toISOString()
-          });
-          // Reject mismatched data
-          if (!cancelled) {
-            setProfile(null);
-            setLoading(false);
-          }
+        if (data && (data as any).user_id !== user.id) {
+          console.error("[useProfile] SECURITY: Profile user_id mismatch!");
+          if (!cancelled) { setProfile(null); setLoading(false); }
           return;
         }
 
         if (!cancelled) {
-          if (data) setProfile(data);
+          if (data) {
+            // Map profile_image_url to profile_photo_url for internal use
+            setProfile({
+              id: (data as any).id,
+              user_id: (data as any).user_id,
+              full_name: (data as any).full_name,
+              phone: (data as any).phone,
+              email: (data as any).email,
+              kyc_status: (data as any).kyc_status,
+              profile_photo_url: (data as any).profile_image_url,
+            });
+          }
           setLoading(false);
         }
       } catch (error) {
-        // Suppress AbortError in development (caused by rapid mount/unmount)
         if (error instanceof Error && error.name === 'AbortError') {
           console.debug('[useProfile] Request aborted (normal in development)');
         } else {
@@ -73,65 +71,35 @@ export function useProfile() {
       }
     };
 
-    // Real-time updates for profile changes
     const setupRealtimeSubscription = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user || cancelled) return;
         
-        console.log('[useProfile] Setting up real-time subscription for user:', user.id);
-        
         const channel = supabase
           .channel(`profile-${user.id}`)
-          .on(
-            "postgres_changes",
-            {
-              event: "UPDATE",
-              schema: "public",
-              table: "profiles",
-              filter: `user_id=eq.${user.id}`
-            },
+          .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `user_id=eq.${user.id}` },
             (payload) => {
-              try {
-                console.log('[useProfile] Received profile update event:', payload);
-                if (payload.new && !cancelled) {
-                  const updatedProfile = payload.new as ProfileData;
-                  
-                  // CRITICAL: Validate subscription update matches authenticated user
-                  if (updatedProfile.user_id !== user.id) {
-                    console.error("[useProfile] SECURITY: Subscription user_id mismatch!", {
-                      expected: user.id,
-                      received: updatedProfile.user_id,
-                      timestamp: new Date().toISOString()
-                    });
-                    // Reject mismatched update
-                    return;
-                  }
-                  
-                  console.log('[useProfile] Updating profile state with:', updatedProfile);
-                  setProfile(updatedProfile);
-                }
-              } catch (error) {
-                console.error('[useProfile] Error processing subscription event:', error);
+              if (payload.new && !cancelled) {
+                const d = payload.new as any;
+                if (d.user_id !== user.id) return;
+                setProfile({
+                  id: d.id,
+                  user_id: d.user_id,
+                  full_name: d.full_name,
+                  phone: d.phone,
+                  email: d.email,
+                  kyc_status: d.kyc_status,
+                  profile_photo_url: d.profile_image_url || d.profile_photo_url,
+                });
               }
             }
           )
-          .subscribe((status) => {
-            console.log('[useProfile] Subscription status:', status);
-            if (status === 'SUBSCRIPTION_ERROR') {
-              console.error('[useProfile] Subscription error occurred');
-            }
-          });
+          .subscribe();
 
-        realtimeCleanup = () => {
-          console.log('[useProfile] Cleaning up real-time subscription');
-          supabase.removeChannel(channel);
-        };
+        realtimeCleanup = () => supabase.removeChannel(channel);
       } catch (error) {
-        // Suppress AbortError in development (caused by rapid mount/unmount)
-        if (error instanceof Error && error.name === 'AbortError') {
-          console.debug('[useProfile] Subscription setup aborted (normal in development)');
-        } else {
+        if (!(error instanceof Error && error.name === 'AbortError')) {
           console.error('[useProfile] Failed to setup real-time subscription:', error);
         }
       }
@@ -140,15 +108,9 @@ export function useProfile() {
     fetchProfile();
     setupRealtimeSubscription();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[useProfile] Auth state changed:', event, session?.user?.id);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
       if (!cancelled) {
-        // Clean up old subscription
-        if (realtimeCleanup) {
-          realtimeCleanup();
-          realtimeCleanup = null;
-        }
-        // Refetch profile and re-establish subscription
+        if (realtimeCleanup) { realtimeCleanup(); realtimeCleanup = null; }
         fetchProfile();
         setupRealtimeSubscription();
       }

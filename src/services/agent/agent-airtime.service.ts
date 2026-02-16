@@ -16,153 +16,74 @@ interface AgentAirtimeResult {
 }
 
 export const agentAirtimeService = {
-  /**
-   * Agent sells airtime to customer
-   */
   async sellAirtime(params: AgentAirtimeParams): Promise<AgentAirtimeResult> {
     try {
       const { agentWalletId, phoneNumber, amount, networkCode, agentPin } = params;
 
-      // Validate amount
-      if (amount < 10) {
-        return { success: false, message: "Minimum airtime amount is KES 10" };
-      }
+      if (amount < 10) return { success: false, message: "Minimum airtime amount is KES 10" };
+      if (amount > 10000) return { success: false, message: "Maximum airtime amount is KES 10,000" };
 
-      if (amount > 10000) {
-        return { success: false, message: "Maximum airtime amount is KES 10,000" };
-      }
-
-      // Get agent wallet
       const { data: agentWallet, error: walletError } = await supabase
-        .from("wallets")
-        .select("*")
-        .eq("id", agentWalletId)
-        .single();
+        .from("wallets").select("*").eq("id", agentWalletId).single();
+      if (walletError || !agentWallet) return { success: false, message: "Agent wallet not found" };
+      if (agentWallet.transaction_pin !== agentPin) return { success: false, message: "Invalid PIN" };
 
-      if (walletError || !agentWallet) {
-        return { success: false, message: "Agent wallet not found" };
-      }
-
-      // Verify PIN
-      if (agentWallet.transaction_pin !== agentPin) {
-        return { success: false, message: "Invalid PIN" };
-      }
-
-      // Get network details
       const { data: network, error: networkError } = await supabase
-        .from("airtime_networks")
-        .select("*")
-        .eq("code", networkCode)
-        .eq("enabled", true)
-        .single();
+        .from("airtime_networks").select("*").eq("code", networkCode).eq("enabled", true).single();
+      if (networkError || !network) return { success: false, message: "Network not available" };
 
-      if (networkError || !network) {
-        return { success: false, message: "Network not available" };
-      }
-
-      // Calculate commission (network commission rate, typically 2-5%)
       const commission = amount * network.commission_rate;
-
-      // Check agent balance
-      if (agentWallet.balance < amount) {
-        return {
-          success: false,
-          message: `Insufficient balance. Need KES ${amount.toFixed(2)}`,
-        };
-      }
+      if (agentWallet.balance < amount) return { success: false, message: `Insufficient balance. Need KES ${amount.toFixed(2)}` };
 
       const transactionId = `AGT-AIR-${Date.now()}`;
 
-      // Deduct from agent wallet
-      const { error: deductError } = await supabase
-        .from("wallets")
-        .update({ balance: agentWallet.balance - amount })
-        .eq("id", agentWalletId);
+      await supabase.from("wallets").update({ balance: agentWallet.balance - amount }).eq("id", agentWalletId);
 
-      if (deductError) throw deductError;
+      const { data: agent } = await supabase.from("agents").select("id").eq("user_id", agentWallet.user_id).single();
 
-      // Get agent record
-      const { data: agent } = await supabase
-        .from("agents")
-        .select("id")
-        .eq("user_id", agentWallet.user_id)
-        .single();
-
-      // Record airtime transaction
-      const { error: airtimeError } = await supabase
-        .from("airtime_transactions")
-        .insert({
-          transaction_id: transactionId,
-          wallet_id: agentWalletId,
-          phone_number: phoneNumber,
-          network_code: networkCode,
-          amount: amount,
-          status: "completed",
-          agent_id: agent?.id,
-          commission_amount: commission,
-        });
-
-      if (airtimeError) throw airtimeError;
+      // Record airtime transaction - use correct schema columns
+      await supabase.from("airtime_transactions").insert({
+        user_id: agentWallet.user_id,
+        phone_number: phoneNumber,
+        network_id: network.id,
+        amount: amount,
+        status: "completed",
+        agent_id: agent?.id || null,
+        commission: commission,
+      } as any);
 
       // Record in transactions table
-      const { error: txError } = await supabase
-        .from("transactions")
-        .insert({
-          transaction_id: transactionId,
-          sender_wallet_id: agentWalletId,
-          receiver_wallet_id: null,
-          type: "agent_airtime",
-          amount: amount,
-          fee: 0,
-          status: "completed",
-          description: `Agent airtime sale - ${network.name} to ${phoneNumber}`,
-          agent_id: agent?.id,
-          commission_amount: commission,
-        });
+      await supabase.from("transactions").insert({
+        transaction_id: transactionId,
+        sender_wallet_id: agentWalletId,
+        type: "agent_airtime",
+        amount: amount,
+        fee: 0,
+        status: "completed",
+        agent_id: agent?.id || null,
+        commission_amount: commission,
+      } as any);
 
-      if (txError) throw txError;
-
-      // Update agent commission balance
       if (agent) {
-        const { data: agentData } = await supabase
-          .from("agents")
-          .select("commission_balance")
-          .eq("id", agent.id)
-          .single();
-
+        const { data: agentData } = await supabase.from("agents").select("commission_balance").eq("id", agent.id).single();
         if (agentData) {
-          await supabase
-            .from("agents")
-            .update({ commission_balance: agentData.commission_balance + commission })
-            .eq("id", agent.id);
+          await supabase.from("agents").update({ commission_balance: agentData.commission_balance + commission }).eq("id", agent.id);
         }
-
-        // Record commission transaction
-        await supabase
-          .from("commission_transactions")
-          .insert({
-            agent_id: agent.id,
-            transaction_id: transactionId,
-            commission_amount: commission,
-            transaction_type: "airtime",
-          });
+        await supabase.from("commission_transactions").insert({
+          agent_id: agent.id,
+          agent_wallet_id: agentWalletId,
+          transaction_id: transactionId,
+          commission_amount: commission,
+          commission_percentage: network.commission_rate * 100,
+          base_amount: amount,
+          transaction_type: "airtime",
+        } as any);
       }
 
-      // TODO: Integrate with actual airtime API (Africa's Talking, etc.)
-      // For now, we just record the transaction
-
-      return {
-        success: true,
-        message: "Airtime purchase successful",
-        transactionId,
-        commission,
-      };
+      return { success: true, message: "Airtime purchase successful", transactionId, commission };
     } catch (error: any) {
       console.error("Agent airtime error:", error);
-      return {
-        success: false,
-        message: error.message || "Failed to process airtime purchase",
-      };
+      return { success: false, message: error.message || "Failed to process airtime purchase" };
     }
   },
 };

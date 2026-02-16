@@ -56,6 +56,7 @@ export type Database = {
       agents: {
         Row: {
           agent_id: string
+          agent_number: string | null
           business_name: string | null
           commission_balance: number
           created_at: string
@@ -66,6 +67,7 @@ export type Database = {
         }
         Insert: {
           agent_id?: string
+          agent_number?: string | null
           business_name?: string | null
           commission_balance?: number
           created_at?: string
@@ -76,6 +78,7 @@ export type Database = {
         }
         Update: {
           agent_id?: string
+          agent_number?: string | null
           business_name?: string | null
           commission_balance?: number
           created_at?: string
@@ -293,32 +296,47 @@ export type Database = {
       }
       currencies: {
         Row: {
+          admin_fee_percentage: number | null
+          buy_rate: number | null
           code: string
           created_at: string
           enabled: boolean
+          exchange_rate: number | null
           id: string
           is_default: boolean
+          last_updated: string | null
           name: string
+          sell_rate: number | null
           symbol: string
           updated_at: string
         }
         Insert: {
+          admin_fee_percentage?: number | null
+          buy_rate?: number | null
           code: string
           created_at?: string
           enabled?: boolean
+          exchange_rate?: number | null
           id?: string
           is_default?: boolean
+          last_updated?: string | null
           name: string
+          sell_rate?: number | null
           symbol: string
           updated_at?: string
         }
         Update: {
+          admin_fee_percentage?: number | null
+          buy_rate?: number | null
           code?: string
           created_at?: string
           enabled?: boolean
+          exchange_rate?: number | null
           id?: string
           is_default?: boolean
+          last_updated?: string | null
           name?: string
+          sell_rate?: number | null
           symbol?: string
           updated_at?: string
         }
@@ -420,6 +438,8 @@ export type Database = {
           amount: number
           checkout_request_id: string
           created_at: string | null
+          currency: string | null
+          exchange_rate_used: number | null
           id: string
           merchant_request_id: string
           mpesa_receipt_number: string | null
@@ -437,6 +457,8 @@ export type Database = {
           amount: number
           checkout_request_id: string
           created_at?: string | null
+          currency?: string | null
+          exchange_rate_used?: number | null
           id?: string
           merchant_request_id: string
           mpesa_receipt_number?: string | null
@@ -454,6 +476,8 @@ export type Database = {
           amount?: number
           checkout_request_id?: string
           created_at?: string | null
+          currency?: string | null
+          exchange_rate_used?: number | null
           id?: string
           merchant_request_id?: string
           mpesa_receipt_number?: string | null
@@ -471,28 +495,37 @@ export type Database = {
       notifications: {
         Row: {
           created_at: string
+          dismissed: boolean | null
+          dismissed_at: string | null
           id: string
           message: string
           priority: string | null
           read: boolean
+          title: string | null
           type: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          dismissed?: boolean | null
+          dismissed_at?: string | null
           id?: string
           message: string
           priority?: string | null
           read?: boolean
+          title?: string | null
           type?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          dismissed?: boolean | null
+          dismissed_at?: string | null
           id?: string
           message?: string
           priority?: string | null
           read?: boolean
+          title?: string | null
           type?: string
           user_id?: string
         }
@@ -558,6 +591,65 @@ export type Database = {
         }
         Relationships: []
       }
+      paystack_transactions: {
+        Row: {
+          amount: number
+          channel: string | null
+          created_at: string | null
+          currency: string
+          email: string
+          gateway_response: string | null
+          id: string
+          metadata: Json | null
+          paid_at: string | null
+          reference: string
+          status: string
+          updated_at: string | null
+          user_id: string
+          wallet_id: string
+        }
+        Insert: {
+          amount: number
+          channel?: string | null
+          created_at?: string | null
+          currency?: string
+          email: string
+          gateway_response?: string | null
+          id?: string
+          metadata?: Json | null
+          paid_at?: string | null
+          reference: string
+          status?: string
+          updated_at?: string | null
+          user_id: string
+          wallet_id: string
+        }
+        Update: {
+          amount?: number
+          channel?: string | null
+          created_at?: string | null
+          currency?: string
+          email?: string
+          gateway_response?: string | null
+          id?: string
+          metadata?: Json | null
+          paid_at?: string | null
+          reference?: string
+          status?: string
+          updated_at?: string | null
+          user_id?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paystack_transactions_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pesapal_transactions: {
         Row: {
           amount: number
@@ -565,6 +657,7 @@ export type Database = {
           created_at: string | null
           currency: string
           description: string | null
+          exchange_rate_used: number | null
           id: string
           merchant_reference: string
           notification_id: string | null
@@ -582,6 +675,7 @@ export type Database = {
           created_at?: string | null
           currency?: string
           description?: string | null
+          exchange_rate_used?: number | null
           id?: string
           merchant_reference: string
           notification_id?: string | null
@@ -599,6 +693,7 @@ export type Database = {
           created_at?: string | null
           currency?: string
           description?: string | null
+          exchange_rate_used?: number | null
           id?: string
           merchant_reference?: string
           notification_id?: string | null
@@ -629,6 +724,7 @@ export type Database = {
           passport_number: string | null
           phone: string | null
           profile_image_url: string | null
+          profile_photo_url: string | null
           updated_at: string
           user_id: string
         }
@@ -648,6 +744,7 @@ export type Database = {
           passport_number?: string | null
           phone?: string | null
           profile_image_url?: string | null
+          profile_photo_url?: string | null
           updated_at?: string
           user_id: string
         }
@@ -667,6 +764,7 @@ export type Database = {
           passport_number?: string | null
           phone?: string | null
           profile_image_url?: string | null
+          profile_photo_url?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -706,6 +804,7 @@ export type Database = {
           created_at: string | null
           currency: string
           description: string | null
+          exchange_rate_used: number | null
           id: string
           payment_intent_id: string
           payment_method: string | null
@@ -719,6 +818,7 @@ export type Database = {
           created_at?: string | null
           currency?: string
           description?: string | null
+          exchange_rate_used?: number | null
           id?: string
           payment_intent_id: string
           payment_method?: string | null
@@ -732,6 +832,7 @@ export type Database = {
           created_at?: string | null
           currency?: string
           description?: string | null
+          exchange_rate_used?: number | null
           id?: string
           payment_intent_id?: string
           payment_method?: string | null
@@ -802,11 +903,16 @@ export type Database = {
         Row: {
           agent_id: string | null
           amount: number
+          balance_after: number | null
           commission_amount: number | null
           created_at: string
+          currency: string | null
+          exchange_rate_used: number | null
           fee: number
           id: string
           metadata: Json | null
+          original_amount: number | null
+          original_currency: string | null
           receipt_reference: string | null
           receiver_wallet_id: string | null
           sender_wallet_id: string | null
@@ -817,11 +923,16 @@ export type Database = {
         Insert: {
           agent_id?: string | null
           amount: number
+          balance_after?: number | null
           commission_amount?: number | null
           created_at?: string
+          currency?: string | null
+          exchange_rate_used?: number | null
           fee?: number
           id?: string
           metadata?: Json | null
+          original_amount?: number | null
+          original_currency?: string | null
           receipt_reference?: string | null
           receiver_wallet_id?: string | null
           sender_wallet_id?: string | null
@@ -832,11 +943,16 @@ export type Database = {
         Update: {
           agent_id?: string | null
           amount?: number
+          balance_after?: number | null
           commission_amount?: number | null
           created_at?: string
+          currency?: string | null
+          exchange_rate_used?: number | null
           fee?: number
           id?: string
           metadata?: Json | null
+          original_amount?: number | null
+          original_currency?: string | null
           receipt_reference?: string | null
           receiver_wallet_id?: string | null
           sender_wallet_id?: string | null
@@ -956,6 +1072,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      calculate_exchange_with_fee: {
+        Args: {
+          p_amount: number
+          p_from_currency: string
+          p_to_currency: string
+          p_transaction_type: string
+        }
+        Returns: Json
+      }
       cleanup_expired_otps: { Args: never; Returns: undefined }
       create_otp_code: {
         Args: {
@@ -970,10 +1095,15 @@ export type Database = {
         Args: { deposit_amount: number; wallet_uuid: string }
         Returns: undefined
       }
+      dismiss_notification: {
+        Args: { p_notification_id: string }
+        Returns: Json
+      }
       generate_agent_id: { Args: never; Returns: string }
       generate_agent_number: { Args: never; Returns: string }
       generate_receipt_reference: { Args: never; Returns: string }
       generate_user_wallet_number: { Args: never; Returns: string }
+      generate_wallet_id: { Args: never; Returns: string }
       generate_wallet_number: { Args: { is_agent?: boolean }; Returns: string }
       get_agent_commission_summary: {
         Args: { p_agent_id: string }
@@ -984,10 +1114,12 @@ export type Database = {
           transaction_count: number
         }[]
       }
+      get_total_balance: { Args: never; Returns: number }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      get_user_roles: { Args: { p_user_id: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -998,18 +1130,24 @@ export type Database = {
       has_transaction_pin: { Args: { p_user_id: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       is_agent_or_admin: { Args: never; Returns: boolean }
+      promote_user_to_admin: { Args: { p_user_id: string }; Returns: Json }
+      promote_user_to_agent: { Args: { p_user_id: string }; Returns: Json }
+      remove_user_role: {
+        Args: { p_role: string; p_user_id: string }
+        Returns: Json
+      }
       track_sms_charge: {
         Args: { p_phone: string; p_type: string }
         Returns: undefined
       }
-      validate_transaction_pin: {
-        Args: { p_pin: string; p_user_id: string }
-        Returns: boolean
-      }
+      validate_transaction_pin:
+        | { Args: { input_pin: string }; Returns: boolean }
+        | { Args: { p_pin: string; p_user_id: string }; Returns: boolean }
       verify_otp_code: {
         Args: { p_code: string; p_phone_number: string; p_purpose: string }
         Returns: boolean
       }
+      verify_transaction_pin: { Args: { input_pin: string }; Returns: boolean }
     }
     Enums: {
       app_role: "user" | "agent" | "admin"

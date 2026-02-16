@@ -1,61 +1,50 @@
-import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
-import { NavigationSystemProvider } from "./contexts/NavigationSystemContext";
-import { SkeletonPage } from "./components/skeletons";
 
-// Skeleton loading component (replaces spinner)
-const PageLoader = () => <SkeletonPage />;
-
-// Eager load critical pages (login, register)
+// Eager load ALL pages — zero loading spinners
 import Login from "./pages/Login";
 import RegisterWithOTP from "./pages/RegisterWithOTP";
 import AuthCallback from "./pages/AuthCallback";
+import NotFound from "./pages/NotFound";
 
-// Lazy load all other pages
-const NotFound = lazy(() => import("./pages/NotFound"));
+import UserDashboard from "./pages/dashboard/UserDashboard";
+import DepositPage from "./pages/dashboard/user/DepositPage";
+import WithdrawPage from "./pages/dashboard/user/WithdrawPage";
+import SendMoneyPage from "./pages/dashboard/user/SendMoneyPage";
+import BuyAirtimePage from "./pages/dashboard/user/BuyAirtimePage";
+import StatementsPage from "./pages/dashboard/user/StatementsPage";
+import NotificationsPage from "./pages/dashboard/user/NotificationsPage";
+import ProfilePage from "./pages/dashboard/user/ProfilePage";
+import SetupPinPage from "./pages/dashboard/user/SetupPinPage";
+import KYCVerificationPage from "./pages/dashboard/user/KYCVerificationPage";
 
-/* ================= USER PAGES (LAZY) ================= */
-const UserDashboard = lazy(() => import("./pages/dashboard/UserDashboard"));
-const DepositPage = lazy(() => import("./pages/dashboard/user/DepositPage"));
-const WithdrawPage = lazy(() => import("./pages/dashboard/user/WithdrawPage"));
-const SendMoneyPage = lazy(() => import("./pages/dashboard/user/SendMoneyPage"));
-const BuyAirtimePage = lazy(() => import("./pages/dashboard/user/BuyAirtimePage"));
-const StatementsPage = lazy(() => import("./pages/dashboard/user/StatementsPage"));
-const NotificationsPage = lazy(() => import("./pages/dashboard/user/NotificationsPage"));
-const ProfilePage = lazy(() => import("./pages/dashboard/user/ProfilePage"));
-const SetupPinPage = lazy(() => import("./pages/dashboard/user/SetupPinPage"));
-const KYCVerificationPage = lazy(() => import("./pages/dashboard/user/KYCVerificationPage"));
+import AgentDashboard from "./pages/dashboard/AgentDashboard";
+import AgentDepositPage from "./pages/dashboard/agent/AgentDepositPage";
+import AgentWithdrawPage from "./pages/dashboard/agent/AgentWithdrawPage";
+import AgentTransferPage from "./pages/dashboard/agent/AgentTransferPage";
+import AgentTransferAgentPage from "./pages/dashboard/agent/AgentTransferAgentPage";
+import AgentTransferPhonePage from "./pages/dashboard/agent/AgentTransferPhonePage";
+import AgentSellAirtimePage from "./pages/dashboard/agent/AgentSellAirtimePage";
+import AgentCommissionsPage from "./pages/dashboard/agent/AgentCommissionsPage";
+import AgentStatementsPage from "./pages/dashboard/agent/AgentStatementsPage";
+import AgentNotificationsPage from "./pages/dashboard/agent/AgentNotificationsPage";
 
-/* ================= AGENT PAGES (LAZY) ================= */
-const AgentDashboard = lazy(() => import("./pages/dashboard/AgentDashboard"));
-const AgentDepositPage = lazy(() => import("./pages/dashboard/agent/AgentDepositPage"));
-const AgentWithdrawPage = lazy(() => import("./pages/dashboard/agent/AgentWithdrawPage"));
-const AgentTransferPage = lazy(() => import("./pages/dashboard/agent/AgentTransferPage"));
-const AgentTransferAgentPage = lazy(() => import("./pages/dashboard/agent/AgentTransferAgentPage"));
-const AgentTransferPhonePage = lazy(() => import("./pages/dashboard/agent/AgentTransferPhonePage"));
-const AgentSellAirtimePage = lazy(() => import("./pages/dashboard/agent/AgentSellAirtimePage"));
-const AgentCommissionsPage = lazy(() => import("./pages/dashboard/agent/AgentCommissionsPage"));
-const AgentStatementsPage = lazy(() => import("./pages/dashboard/agent/AgentStatementsPage"));
-const AgentNotificationsPage = lazy(() => import("./pages/dashboard/agent/AgentNotificationsPage"));
-
-/* ================= ADMIN PAGES (LAZY) ================= */
-const AdminDashboard = lazy(() => import("./pages/dashboard/AdminDashboard"));
-const AdminUsersPage = lazy(() => import("./pages/dashboard/admin/AdminUsersPage"));
-const AdminAgentsPage = lazy(() => import("./pages/dashboard/admin/AdminAgentsPage"));
-const AdminBulkSMSPage = lazy(() => import("./pages/dashboard/admin/AdminBulkSMSPage"));
-const AdminTransactionListPage = lazy(() => import("./pages/dashboard/admin/AdminTransactionListPage"));
-const AdminStatementsPage = lazy(() => import("./pages/dashboard/admin/AdminStatementsPage"));
-const AdminReportsPage = lazy(() => import("./pages/dashboard/admin/AdminReportsPage"));
-const AdminFeesPage = lazy(() => import("./pages/dashboard/admin/AdminFeesPage"));
-const AdminCurrenciesPage = lazy(() => import("./pages/dashboard/admin/AdminCurrenciesPage"));
-const AdminAirtimePage = lazy(() => import("./pages/dashboard/admin/AdminAirtimePage"));
-const AdminActionsPage = lazy(() => import("./pages/dashboard/admin/AdminActionsPage"));
-const AdminAuditPage = lazy(() => import("./pages/dashboard/admin/AdminAuditPage"));
-const AdminDepositsPage = lazy(() => import("./pages/dashboard/admin/AdminDepositsPage"));
+import AdminDashboard from "./pages/dashboard/AdminDashboard";
+import AdminUsersPage from "./pages/dashboard/admin/AdminUsersPage";
+import AdminAgentsPage from "./pages/dashboard/admin/AdminAgentsPage";
+import AdminBulkSMSPage from "./pages/dashboard/admin/AdminBulkSMSPage";
+import AdminTransactionListPage from "./pages/dashboard/admin/AdminTransactionListPage";
+import AdminStatementsPage from "./pages/dashboard/admin/AdminStatementsPage";
+import AdminReportsPage from "./pages/dashboard/admin/AdminReportsPage";
+import AdminFeesPage from "./pages/dashboard/admin/AdminFeesPage";
+import AdminCurrenciesPage from "./pages/dashboard/admin/AdminCurrenciesPage";
+import AdminAirtimePage from "./pages/dashboard/admin/AdminAirtimePage";
+import AdminActionsPage from "./pages/dashboard/admin/AdminActionsPage";
+import AdminAuditPage from "./pages/dashboard/admin/AdminAuditPage";
+import AdminDepositsPage from "./pages/dashboard/admin/AdminDepositsPage";
 
 const queryClient = new QueryClient();
 
@@ -67,9 +56,7 @@ export default function App() {
         <Sonner />
 
         <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <NavigationSystemProvider>
-            <Suspense fallback={<PageLoader />}>
-              <Routes>
+          <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
@@ -87,12 +74,7 @@ export default function App() {
               <Route path="notifications" element={<NotificationsPage />} />
               <Route path="profile" element={<ProfilePage />} />
               <Route path="setup-pin" element={<SetupPinPage />} />
-
-              {/* ✅ KYC ROUTE FIXED */}
-              <Route
-                path="kyc-verification"
-                element={<KYCVerificationPage />}
-              />
+              <Route path="kyc-verification" element={<KYCVerificationPage />} />
             </Route>
 
             {/* ================= AGENT ROUTES ================= */}
@@ -130,8 +112,6 @@ export default function App() {
             {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-            </Suspense>
-          </NavigationSystemProvider>
         </HashRouter>
       </TooltipProvider>
     </QueryClientProvider>
