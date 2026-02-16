@@ -12,44 +12,44 @@ interface SmsResponse {
 
 export const smsService = {
   /**
-   * Send SMS notification
+   * Send SMS notification - DIRECT TALKSASA INTEGRATION (WORKAROUND)
+   * NOTE: This bypasses the Edge Function which has a bug (phone vs recipient field)
+   * TODO: Fix Edge Function and revert to using it for better security
    */
   async sendSms(payload: SmsPayload): Promise<SmsResponse> {
     try {
-      // Use Supabase Edge Function to avoid CORS issues
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
-      console.log("Sending SMS via Edge Function:", {
-        to: payload.to,
+      // Format phone number
+      const formattedPhone = this.formatPhoneNumber(payload.to);
+      
+      console.log("Sending SMS via TalkSasa (direct):", {
+        to: formattedPhone,
         messageLength: payload.message.length,
       });
 
-      const response = await fetch(`${supabaseUrl}/functions/v1/sms-api`, {
+      // Call TalkSasa API directly (bypassing broken Edge Function)
+      const response = await fetch("https://bulksms.talksasa.com/api/v3/sms/send", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${supabaseAnonKey}`,
+          "Authorization": "Bearer 1956|W7r0b7vuSgcT2UqiYvFcKIodUOkSPlabpVtcVh4u7c347b80",
+          "Accept": "application/json",
         },
         body: JSON.stringify({
-          to: payload.to,
+          recipient: formattedPhone, // CORRECT FIELD NAME (Edge Function uses wrong field "phone")
           message: payload.message,
-          username: "abanremit",
-          psk: "abanremit2024",
+          sender_id: "ABAN_COOL",
         }),
       });
 
       const data = await response.json();
       
-      // Check if SMS actually failed (even with 200 status)
-      if (data.status === "failed" || data.error) {
-        console.error("SMS API error:", data);
-        console.error("Debug info:", data.debug);
-        
-        // Log detailed error but don't fail the transaction
-        console.warn("⚠️ SMS delivery failed:", data.error);
-        console.warn("Phone used:", data.debug?.phoneUsed);
-        console.warn("TalkSasa response:", data.debug?.responseBody);
+      console.log("TalkSasa Response:", data);
+
+      // Check for errors
+      if (!response.ok || data.status === "error" || data.error) {
+        const errorMsg = data.message || data.error || "SMS sending failed";
+        console.error("TalkSasa API error:", errorMsg);
+        console.error("Full response:", data);
         
         // Return demo mode response
         return {
@@ -60,27 +60,17 @@ export const smsService = {
         };
       }
 
-      if (!response.ok) {
-        console.error("SMS API HTTP error:", response.status, data);
-        throw new Error(`SMS API error (${response.status}): ${data.error || data.message || response.statusText}`);
-      }
-
-      console.log("✅ SMS sent successfully:", data);
-      
-      // Log TalkSasa debug info if available
-      if (data.debug) {
-        console.log("TalkSasa Debug Info:", data.debug);
-      }
+      console.log("✅ SMS sent successfully via TalkSasa (direct)");
       
       return {
         status: "sent",
         message: "SMS sent successfully",
-        messageId: data.messageId || `SMS${Date.now()}`,
+        messageId: data.message_id || data.id || `SMS${Date.now()}`,
         demo: false,
       };
     } catch (error) {
       console.error("SMS sending error:", error);
-      // Demo mode fallback - log but don't fail
+      // Demo mode fallback
       console.log("⚠️ SMS demo mode: Message would be sent to", payload.to);
       return {
         status: "sent",
