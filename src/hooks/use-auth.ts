@@ -12,8 +12,16 @@ export function useAuth() {
   const [state, setState] = useState<AuthState>({ user: null, session: null, loading: true });
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setState({ user: session?.user ?? null, session, loading: false });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[useAuth] Auth state changed:', event);
+      
+      // Clear all user data on sign out
+      if (event === 'SIGNED_OUT') {
+        console.log('[useAuth] Clearing user and session state on logout');
+        setState({ user: null, session: null, loading: false });
+      } else {
+        setState({ user: session?.user ?? null, session, loading: false });
+      }
     });
 
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -43,7 +51,9 @@ export function useAuth() {
   }, []);
 
   const signOut = useCallback(async () => {
+    console.log('[useAuth] Signing out user');
     await supabase.auth.signOut();
+    // State will be cleared by onAuthStateChange listener
   }, []);
 
   return { ...state, signIn, signUp, signOut };

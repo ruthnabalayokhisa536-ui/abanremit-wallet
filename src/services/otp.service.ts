@@ -23,6 +23,13 @@ export const otpService = {
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
       const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
+      console.log("Generating OTP:", {
+        phone: phoneNumber,
+        otp: otp, // Remove this in production!
+        purpose,
+        expiresAt: expiresAt.toISOString()
+      });
+
       // Store OTP in database using RPC or direct insert
       const { data, error } = await supabase.rpc('create_otp_code' as any, {
         p_phone_number: smsService.formatPhoneNumber(phoneNumber),
@@ -32,8 +39,25 @@ export const otpService = {
       });
 
       if (error) {
-        console.warn("OTP storage error, using fallback:", error);
-        // Fallback: just send SMS without storing
+        console.error("OTP storage error:", error);
+        // Try direct insert as fallback
+        const { error: insertError } = await supabase
+          .from('otp_codes')
+          .insert({
+            phone_number: smsService.formatPhoneNumber(phoneNumber),
+            code: otp,
+            purpose: purpose,
+            expires_at: expiresAt.toISOString(),
+            verified: false
+          });
+        
+        if (insertError) {
+          console.error("Direct insert also failed:", insertError);
+        } else {
+          console.log("OTP stored via direct insert");
+        }
+      } else {
+        console.log("OTP stored via RPC, ID:", data);
       }
 
       // Send OTP via SMS
@@ -64,6 +88,12 @@ export const otpService = {
     try {
       const formattedPhone = smsService.formatPhoneNumber(phoneNumber);
 
+      console.log("Verifying OTP:", {
+        phone: formattedPhone,
+        code: code,
+        purpose: purpose
+      });
+
       // Verify using RPC function
       const { data, error } = await supabase.rpc('verify_otp_code' as any, {
         p_phone_number: formattedPhone,
@@ -71,7 +101,47 @@ export const otpService = {
         p_purpose: purpose,
       });
 
-      if (error || !data) {
+      console.log("Verification result:", { data, error });
+
+      if (error) {
+        console.error("RPC verification error:", error);
+        // Try direct query as fallback
+        const { data: otpData, error: queryError } = await supabase
+          .from('otp_codes')
+          .select('*')
+          .eq('phone_number', formattedPhone)
+          .eq('code', code)
+          .eq('purpose', purpose)
+          .eq('verified', false)
+          .gt('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        console.log("Direct query result:", { otpData, queryError });
+
+        if (queryError || !otpData) {
+          return {
+            success: false,
+            message: "Invalid or expired OTP",
+            verified: false,
+          };
+        }
+
+        // Mark as verified
+        await supabase
+          .from('otp_codes')
+          .update({ verified: true })
+          .eq('id', otpData.id);
+
+        return {
+          success: true,
+          message: "OTP verified successfully",
+          verified: true,
+        };
+      }
+
+      if (!data) {
         return {
           success: false,
           message: "Invalid or expired OTP",

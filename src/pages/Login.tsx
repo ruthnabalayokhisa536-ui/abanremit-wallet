@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { PrefetchLink } from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -14,17 +15,17 @@ const Login = () => {
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
-  const { user, loading: authLoading, signIn } = useAuth();
-  const { role, loading: roleLoading } = useRole();
+  const { user, signIn } = useAuth();
+  const { role } = useRole();
 
-  // Redirect if already logged in and role is known
+  // Redirect if already logged in
   useEffect(() => {
-    if (user && !roleLoading && role) {
+    if (user && role) {
       if (role === "admin") navigate("/admin", { replace: true });
       else if (role === "agent") navigate("/agent", { replace: true });
       else navigate("/dashboard", { replace: true });
     }
-  }, [user, role, roleLoading, navigate]);
+  }, [user, role, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,14 +39,6 @@ const Login = () => {
       setSubmitting(false);
     }
   };
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-primary/5 p-4 bg-cover bg-center" style={{ backgroundImage: "linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55)), url('/hero-bg.jpg')" }}>
@@ -94,7 +87,7 @@ const Login = () => {
           </Button>
         </form>
         <p className="text-sm text-center text-muted-foreground mt-6">
-          Don't have an account? <Link to="/register" className="text-primary font-medium hover:underline">Register</Link>
+          Don't have an account? <PrefetchLink to="/register" className="text-primary font-medium hover:underline">Register</PrefetchLink>
         </p>
       </Card>
     </div>

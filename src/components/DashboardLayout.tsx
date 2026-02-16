@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { PrefetchLink } from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -10,6 +11,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useRole } from "@/hooks/use-role";
 import { useProfile } from "@/hooks/use-profile";
+import { useNotifications } from "@/hooks/use-notifications";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -31,7 +33,8 @@ const userNav: NavItem[] = [
   { label: "Buy Airtime", icon: Phone, path: "/dashboard/airtime" },
   { label: "Statements", icon: FileText, path: "/dashboard/statements" },
   { label: "Notifications", icon: Bell, path: "/dashboard/notifications" },
-  { label: "Profile & KYC", icon: User, path: "/dashboard/profile" },
+  { label: "KYC Verification", icon: Shield, path: "/dashboard/kyc-verification" },
+  { label: "Profile & Settings", icon: User, path: "/dashboard/profile" },
 ];
 
 const agentNav: NavItem[] = [
@@ -75,6 +78,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
   const { user, loading: authLoading, signOut } = useAuth();
   const { role: dbRole, loading: roleLoading } = useRole();
   const { profile } = useProfile();
+  const { unreadCount } = useNotifications({ userId: user?.id });
 
   const nav = role === "admin" ? adminNav : role === "agent" ? agentNav : userNav;
   const roleLabel = role === "admin" ? "Administrator" : role === "agent" ? "Agent" : "User";
@@ -174,7 +178,12 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
         }`}
       >
         <item.icon className="w-4 h-4" />
-        {item.label}
+        <span className="flex-1">{item.label}</span>
+        {item.label === "Notifications" && unreadCount > 0 && (
+          <Badge variant="destructive" className="h-5 min-w-5 px-1.5 text-[10px] font-bold">
+            {unreadCount > 99 ? "99+" : unreadCount}
+          </Badge>
+        )}
       </Link>
     );
   };

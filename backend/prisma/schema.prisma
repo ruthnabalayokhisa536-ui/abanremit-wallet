@@ -1,0 +1,271 @@
+// Prisma schema for AbanRemit standalone backend
+// This schema mirrors the Supabase implementation
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model - represents all system users (customers, agents, admins)
+model User {
+  id                  String              @id @default(uuid()) @db.Uuid
+  fullName            String              @map("full_name")
+  email               String              @unique
+  phone               String              @unique
+  passwordHash        String              @map("password_hash")
+  walletNumber        String?             @unique @map("wallet_number")
+  role                UserRole            @default(USER)
+  kycStatus           KycStatus           @default(PENDING) @map("kyc_status")
+  profilePhoto        String?             @map("profile_photo")
+  transactionPinHash  String?             @map("transaction_pin_hash")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+  
+  wallets             Wallet[]
+  transactions        Transaction[]
+  kycVerifications    KycVerification[]
+  transactionPin      TransactionPin?
+  notifications       Notification[]
+  agentProfile        Agent?
+  
+  @@map("users")
+}
+
+enum UserRole {
+  USER
+  AGENT
+  ADMIN
+}
+
+enum KycStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Wallet model - represents user wallets for holding funds
+model Wallet {
+  id              String          @id @default(uuid()) @db.Uuid
+  userId          String          @map("user_id") @db.Uuid
+  balance         Decimal         @default(0) @db.Decimal(18, 2)
+  currency        String          @default("KES")
+  status          WalletStatus    @default(ACTIVE)
+  walletNumber    String          @unique @map("wallet_number")
+  isAgentWallet   Boolean         @default(false) @map("is_agent_wallet")
+  agentId         String?         @map("agent_id") @db.Uuid
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agent           Agent?          @relation(fields: [agentId], references: [id])
+  sentTransactions      Transaction[] @relation("SenderWallet")
+  receivedTransactions  Transaction[] @relation("ReceiverWallet")
+  commissionTransactions CommissionTransaction[]
+  
+  @@index([userId])
+  @@index([walletNumber])
+  @@index([agentId])
+  @@map("wallets")
+}
+
+enum WalletStatus {
+  ACTIVE
+  FROZEN
+}
+
+// Transaction model - records all financial transactions
+model Transaction {
+  id                String              @id @default(uuid()) @db.Uuid
+  userId            String              @map("user_id") @db.Uuid
+  walletId          String              @map("wallet_id") @db.Uuid
+  senderWalletId    String?             @map("sender_wallet_id") @db.Uuid
+  receiverWalletId  String?             @map("receiver_wallet_id") @db.Uuid
+  amount            Decimal             @db.Decimal(18, 2)
+  fee               Decimal             @default(0) @db.Decimal(18, 2)
+  type              TransactionType
+  status            TransactionStatus   @default(PENDING)
+  reference         String?
+  receiptReference  String              @unique @map("receipt_reference")
+  commissionAmount  Decimal?            @default(0) @map("commission_amount") @db.Decimal(18, 2)
+  agentId           String?             @map("agent_id") @db.Uuid
+  description       String?
+  balanceAfter      Decimal?            @map("balance_after") @db.Decimal(18, 2)
+  createdAt         DateTime            @default(now()) @map("created_at")
+  
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  senderWallet      Wallet?             @relation("SenderWallet", fields: [senderWalletId], references: [id])
+  receiverWallet    Wallet?             @relation("ReceiverWallet", fields: [receiverWalletId], references: [id])
+  agent             Agent?              @relation(fields: [agentId], references: [id])
+  commissionTransaction CommissionTransaction?
+  
+  @@index([userId, createdAt])
+  @@index([receiptReference])
+  @@index([agentId])
+  @@map("transactions")
+}
+
+enum TransactionType {
+  LOAD
+  WITHDRAW
+  SEND
+  RECEIVE
+  AIRTIME
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+// Agent model - represents agent accounts
+model Agent {
+  id              String              @id @default(uuid()) @db.Uuid
+  userId          String              @unique @map("user_id") @db.Uuid
+  agentId         String              @unique @map("agent_id")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  wallets         Wallet[]
+  transactions    Transaction[]
+  commissions     CommissionTransaction[]
+  
+  @@map("agents")
+}
+
+// CommissionRate model - stores configurable commission rates
+model CommissionRate {
+  id              String          @id @default(uuid()) @db.Uuid
+  transactionType String          @unique @map("transaction_type")
+  percentage      Decimal         @db.Decimal(5, 2)
+  description     String?
+  enabled         Boolean         @default(true)
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  
+  @@map("commission_rates")
+}
+
+// CommissionTransaction model - records agent commissions
+model CommissionTransaction {
+  id                    String              @id @default(uuid()) @db.Uuid
+  transactionId         String              @unique @map("transaction_id") @db.Uuid
+  agentId               String              @map("agent_id") @db.Uuid
+  agentWalletId         String              @map("agent_wallet_id") @db.Uuid
+  transactionType       String              @map("transaction_type")
+  baseAmount            Decimal             @map("base_amount") @db.Decimal(18, 2)
+  commissionPercentage  Decimal             @map("commission_percentage") @db.Decimal(5, 2)
+  commissionAmount      Decimal             @map("commission_amount") @db.Decimal(18, 2)
+  status                CommissionStatus    @default(COMPLETED)
+  createdAt             DateTime            @default(now()) @map("created_at")
+  
+  transaction           Transaction         @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  agent                 Agent               @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  agentWallet           Wallet              @relation(fields: [agentWalletId], references: [id])
+  
+  @@index([agentId, createdAt])
+  @@index([transactionId])
+  @@map("commission_transactions")
+}
+
+enum CommissionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+// TransactionPin model - stores transaction PINs with lockout logic
+model TransactionPin {
+  id              String          @id @default(uuid()) @db.Uuid
+  userId          String          @unique @map("user_id") @db.Uuid
+  pinHash         String          @map("pin_hash")
+  failedAttempts  Int             @default(0) @map("failed_attempts")
+  lockedUntil     DateTime?       @map("locked_until")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@map("transaction_pins")
+}
+
+// KycVerification model - stores KYC documents and verification status
+model KycVerification {
+  id              String          @id @default(uuid()) @db.Uuid
+  userId          String          @map("user_id") @db.Uuid
+  idNumber        String          @map("id_number")
+  idFrontImage    String          @map("id_front_image")
+  idBackImage     String          @map("id_back_image")
+  selfieImage     String          @map("selfie_image")
+  status          KycStatus       @default(PENDING)
+  reviewedBy      String?         @map("reviewed_by") @db.Uuid
+  reviewedAt      DateTime?       @map("reviewed_at")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([status])
+  @@map("kyc_verifications")
+}
+
+// OtpCode model - stores one-time passwords for verification
+model OtpCode {
+  id              String          @id @default(uuid()) @db.Uuid
+  phoneNumber     String          @map("phone_number")
+  code            String
+  purpose         OtpPurpose
+  expiresAt       DateTime        @map("expires_at")
+  verified        Boolean         @default(false)
+  createdAt       DateTime        @default(now()) @map("created_at")
+  
+  @@index([phoneNumber, purpose, verified])
+  @@index([expiresAt])
+  @@map("otp_codes")
+}
+
+enum OtpPurpose {
+  LOGIN
+  TRANSACTION
+  VERIFICATION
+}
+
+// Notification model - stores user notifications
+model Notification {
+  id              String              @id @default(uuid()) @db.Uuid
+  userId          String              @map("user_id") @db.Uuid
+  title           String
+  message         String
+  type            NotificationType
+  priority        NotificationPriority @default(MEDIUM)
+  read            Boolean             @default(false)
+  dismissed       Boolean             @default(false)
+  dismissedAt     DateTime?           @map("dismissed_at")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, read, createdAt])
+  @@index([type, createdAt])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  TRANSACTION
+  KYC
+  SECURITY
+  SYSTEM
+  PROMOTION
+}
+
+enum NotificationPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}

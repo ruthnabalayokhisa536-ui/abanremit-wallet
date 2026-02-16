@@ -22,3 +22,27 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Documentation and temporary files (keep repo clean)
+*.md
+!README.md
+*.txt
+*.sql
+*.html
+!index.html
+!src/**/*.html
+*.zip
+*.bat
+!start-dev.bat
+*.sh
+*.ps1
+*.conf
+test-*.html
+*-proxy-server.js
+check-*.js
+generate-*.js
+abanremit-*.zip
+hostafrica-upload/
+abanremit-critical-fixes/
+abanremit-deployment/
+dev-dist/

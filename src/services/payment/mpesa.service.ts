@@ -82,7 +82,7 @@ export const mpesaService = {
       }
 
       // Use M-Pesa Proxy Server on Render
-      const mpesaProxyUrl = "https://mpesa-proxy.onrender.com/stkpush";
+      const mpesaProxyUrl = "https://mpesa-proxy-server-2.onrender.com/stkpush";
 
       console.log("Initiating M-Pesa STK Push via proxy...");
 
@@ -113,9 +113,14 @@ export const mpesaService = {
         throw new Error(data.error || data.message || "STK Push failed");
       }
 
+      // Show detailed success message
+      const successMessage = data.checkoutRequestId 
+        ? `✅ STK Push sent successfully!\n\n📱 Check your phone (${this.formatPhoneNumber(request.phoneNumber)})\n💳 Enter your M-Pesa PIN to complete payment\n\n⏱️ You have 60 seconds to complete the transaction`
+        : "STK Push sent. Please check your phone and enter your M-Pesa PIN.";
+
       return {
         success: true,
-        message: "STK Push sent. Please check your phone and enter your M-Pesa PIN.",
+        message: successMessage,
         checkoutRequestId: data.checkoutRequestId,
         merchantRequestId: data.merchantRequestId,
       };

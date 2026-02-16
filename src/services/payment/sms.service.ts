@@ -16,47 +16,48 @@ export const smsService = {
    */
   async sendSms(payload: SmsPayload): Promise<SmsResponse> {
     try {
-      // Direct TalkSasa API call (bypass Supabase function)
-      const talksasaToken = "1956|W7r0b7vuSgcT2UqiYvFcKIodUOkSPlabpVtcVh4u7c347b80";
-      const talksasaEndpoint = "https://bulksms.talksasa.com/api/v3";
+      // Use Supabase Edge Function to avoid CORS issues
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-      console.log("Sending SMS directly to TalkSasa:", {
+      console.log("Sending SMS via Edge Function:", {
         to: payload.to,
         messageLength: payload.message.length,
       });
 
-      const response = await fetch(`${talksasaEndpoint}/sms/send`, {
+      const response = await fetch(`${supabaseUrl}/functions/v1/sms-api`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${talksasaToken}`,
-          "Accept": "application/json",
+          "Authorization": `Bearer ${supabaseAnonKey}`,
         },
         body: JSON.stringify({
-          recipient: payload.to,
-          sender_id: "ABAN_COOL",
+          to: payload.to,
           message: payload.message,
+          username: "abanremit",
+          psk: "abanremit2024",
         }),
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        console.error("TalkSasa API error:", errorData);
-        throw new Error(`TalkSasa API error (${response.status}): ${errorData.error || errorData.message || response.statusText}`);
+        console.error("SMS API error:", errorData);
+        throw new Error(`SMS API error (${response.status}): ${errorData.error || errorData.message || response.statusText}`);
       }
 
       const data = await response.json();
-      console.log("TalkSasa success:", data);
+      console.log("SMS sent successfully:", data);
       
       return {
         status: "sent",
-        message: "SMS sent successfully via TalkSasa",
-        messageId: data.message_id || data.id || `SMS${Date.now()}`,
+        message: "SMS sent successfully",
+        messageId: data.messageId || `SMS${Date.now()}`,
         demo: false,
       };
     } catch (error) {
       console.error("SMS sending error:", error);
-      // Demo mode fallback
+      // Demo mode fallback - log but don't fail
+      console.log("SMS demo mode: Message would be sent to", payload.to);
       return {
         status: "sent",
         message: "SMS sent successfully (demo mode)",

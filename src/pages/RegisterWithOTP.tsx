@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { PrefetchLink } from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -286,7 +287,7 @@ const RegisterWithOTP = () => {
         )}
 
         <p className="text-sm text-center text-muted-foreground mt-6">
-          Already have an account? <Link to="/login" className="text-primary font-medium hover:underline">Sign In</Link>
+          Already have an account? <PrefetchLink to="/login" className="text-primary font-medium hover:underline">Sign In</PrefetchLink>
         </p>
       </Card>
     </div>
