@@ -128,7 +128,8 @@ const StatementsPage = () => {
                   <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">No transactions yet.</td></tr>
                 ) : transactions.map((tx) => {
                   const isCredit = tx.receiver_wallet_id === wallet?.id;
-                  const description = tx.metadata?.description || tx.metadata?.network || tx.type;
+                  const meta = tx.metadata as Record<string, any> | null;
+                  const description = meta?.description || meta?.network || tx.type;
                   return (
                     <tr key={tx.id} className="border-b border-border last:border-0">
                       <td className="p-3 font-mono text-xs">{tx.receipt_reference || tx.id.slice(0, 8)}</td>

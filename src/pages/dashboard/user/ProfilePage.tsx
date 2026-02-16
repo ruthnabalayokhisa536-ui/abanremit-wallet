@@ -220,7 +220,7 @@ const ProfilePage = () => {
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">Wallet Number</label>
-                <p className="text-foreground font-mono text-sm">{wallet?.wallet_number || wallet?.wallet_id || "—"}</p>
+                <p className="text-foreground font-mono text-sm">{(wallet as any)?.wallet_number || wallet?.wallet_id || "—"}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-muted-foreground">KYC Status</label>

@@ -162,7 +162,7 @@ const DepositPage = () => {
         
         const result = await paystackService.initializePayment({
           amount: Number(amount),
-          email: profile?.email || user.email || "",
+          email: profile?.email || "",
           metadata: {
             wallet_id: wallet.wallet_id,
             user_name: profile?.full_name || "User",
@@ -216,7 +216,7 @@ const DepositPage = () => {
         // PesaPal payment
         const result = await pesapalService.initiateDeposit({
           amount: Number(amount),
-          email: profile?.email || user.email || "",
+          email: profile?.email || "",
           phone: phoneNumber,
           firstName: profile?.full_name?.split(" ")[0] || "User",
           lastName: profile?.full_name?.split(" ").slice(1).join(" ") || "Name",

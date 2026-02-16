@@ -281,7 +281,7 @@ describe("Feature: user-auth-isolation-fix - Profiles RLS Policies", () => {
   describe("RLS Enabled Verification", () => {
     it("should have RLS enabled on profiles table", async () => {
       // Query pg_tables to verify RLS is enabled
-      const { data, error } = await supabaseAdmin.rpc("check_rls_enabled", {
+      const { data, error } = await (supabaseAdmin as any).rpc("check_rls_enabled", {
         table_name: "profiles",
       });
 

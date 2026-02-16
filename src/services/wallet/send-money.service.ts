@@ -242,7 +242,7 @@ export const sendMoneyService = {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return [];
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("transactions")
         .select("*")
         .eq("user_id", user.user.id)

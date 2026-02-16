@@ -193,7 +193,7 @@ describe("Property Test: Complete airtime purchase flow", () => {
           });
 
           // Mock RPC for commission
-          vi.mocked(supabase.rpc).mockResolvedValue({ data: null, error: null });
+          vi.mocked(supabase.rpc).mockResolvedValue({ data: null, error: null, count: null, status: 200, statusText: "OK" } as any);
 
           // Import and execute airtime service
           const { airtimeService } = await import("@/services/airtime.service");
@@ -334,7 +334,7 @@ describe("Property Test: Complete airtime purchase flow", () => {
             return {} as any;
           });
 
-          vi.mocked(supabase.rpc).mockResolvedValue({ data: null, error: null });
+          vi.mocked(supabase.rpc).mockResolvedValue({ data: null, error: null, count: null, status: 200, statusText: "OK" } as any);
 
           const { airtimeService } = await import("@/services/airtime.service");
           const result = await airtimeService.buyAirtime({

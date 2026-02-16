@@ -27,12 +27,8 @@ const SendMoneyPage = () => {
   const handlePin = async () => {
     setIsProcessing(true);
     try {
-      // Real-time balance check
       const { data: currentWallet } = await supabase
-        .from("wallets")
-        .select("balance")
-        .eq("id", wallet?.id)
-        .single();
+        .from("wallets").select("balance").eq("id", wallet?.id).single();
 
       if (!currentWallet || currentWallet.balance < totalAmount) {
         toast.error("Insufficient funds");
@@ -44,14 +40,7 @@ const SendMoneyPage = () => {
       const generatedTxId = "TXN-" + Date.now().toString(36).toUpperCase();
       setTxId(generatedTxId);
 
-      // Send SMS to recipient
-      await smsService.sendTransferConfirmation(
-        phone,
-        Number(amount),
-        wallet?.wallet_id || "WLT001",
-        generatedTxId
-      );
-
+      await smsService.sendTransferConfirmation(phone, Number(amount), wallet?.wallet_id || "WLT001", generatedTxId);
       toast.success("Transfer sent! SMS notification delivered.");
       setStep("receipt");
     } catch (error) {
@@ -61,21 +50,13 @@ const SendMoneyPage = () => {
     setIsProcessing(false);
   };
 
-  const handleDone = () => { 
-    setStep("form"); 
-    setPhone(""); 
-    setAmount(""); 
-  };
+  const handleDone = () => { setStep("form"); setPhone(""); setAmount(""); };
 
   if (step === "pin") {
     return (
       <DashboardLayout role="user">
         <div className="max-w-md mx-auto">
-          <PinInput 
-            onSubmit={handlePin} 
-            onCancel={() => setStep("confirm")} 
-            disabled={isProcessing}
-          />
+          <PinInput onSubmit={handlePin} onCancel={() => setStep("confirm")} />
         </div>
       </DashboardLayout>
     );
@@ -127,25 +108,11 @@ const SendMoneyPage = () => {
         <Card className="p-6 space-y-4">
           <div>
             <label className="text-sm font-medium text-foreground">Recipient Phone Number</label>
-            <Input 
-              type="tel" 
-              placeholder="+254 7XX XXX XXX" 
-              value={phone} 
-              onChange={(e) => setPhone(e.target.value)} 
-              className="mt-1"
-              disabled={isProcessing}
-            />
+            <Input type="tel" placeholder="+254 7XX XXX XXX" value={phone} onChange={(e) => setPhone(e.target.value)} className="mt-1" disabled={isProcessing} />
           </div>
           <div>
             <label className="text-sm font-medium text-foreground">Amount (KES)</label>
-            <Input 
-              type="number" 
-              placeholder="Enter amount" 
-              value={amount} 
-              onChange={(e) => setAmount(e.target.value)} 
-              className="mt-1"
-              disabled={isProcessing}
-            />
+            <Input type="number" placeholder="Enter amount" value={amount} onChange={(e) => setAmount(e.target.value)} className="mt-1" disabled={isProcessing} />
           </div>
           {amount && <div className="text-sm text-muted-foreground">Fee: <span className="text-destructive">KES {fee.toFixed(2)}</span></div>}
           {amount && wallet && (
@@ -157,15 +124,9 @@ const SendMoneyPage = () => {
             </div>
           )}
           {amount && wallet && wallet.balance < totalAmount && (
-            <div className="text-sm text-destructive font-medium">
-              ⚠️ Insufficient funds
-            </div>
+            <div className="text-sm text-destructive font-medium">⚠️ Insufficient funds</div>
           )}
-          <Button 
-            onClick={() => setStep("confirm")} 
-            disabled={!phone || !amount || isProcessing || (wallet && wallet.balance < totalAmount)} 
-            className="w-full"
-          >
+          <Button onClick={() => setStep("confirm")} disabled={!phone || !amount || isProcessing || (wallet && wallet.balance < totalAmount)} className="w-full">
             {isProcessing ? "Processing..." : "Continue"}
           </Button>
         </Card>

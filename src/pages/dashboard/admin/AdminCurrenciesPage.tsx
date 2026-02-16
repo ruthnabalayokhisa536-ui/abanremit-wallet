@@ -16,36 +16,36 @@ const AdminCurrenciesPage = () => {
   const [editingRate, setEditingRate] = useState<string | null>(null);
   const [rateForm, setRateForm] = useState({ buy_rate: "", sell_rate: "", admin_fee_percentage: "" });
 
-  const fetch = async () => {
+  const fetchCurrencies = async () => {
     setLoading(true);
     const { data } = await supabase.from("currencies").select("*").order("code");
     setCurrencies(data || []);
     setLoading(false);
   };
 
-  useEffect(() => { fetch(); }, []);
+  useEffect(() => { fetchCurrencies(); }, []);
 
   const handleAdd = async () => {
     if (!newCurrency.code || !newCurrency.name || !newCurrency.symbol) { toast.error("All fields required"); return; }
-    const { error } = await supabase.from("currencies").insert(newCurrency);
+    const { error } = await supabase.from("currencies").insert(newCurrency as any);
     if (error) { toast.error(error.message); return; }
     toast.success("Currency added");
     setNewCurrency({ code: "", name: "", symbol: "" });
     setAdding(false);
-    fetch();
+    fetchCurrencies();
   };
 
   const toggleEnabled = async (id: string, enabled: boolean) => {
     const { error } = await supabase.from("currencies").update({ enabled: !enabled }).eq("id", id);
     if (error) { toast.error(error.message); return; }
-    fetch();
+    fetchCurrencies();
   };
 
   const setDefault = async (id: string) => {
     await supabase.from("currencies").update({ is_default: false }).neq("id", id);
     await supabase.from("currencies").update({ is_default: true }).eq("id", id);
     toast.success("Default currency updated");
-    fetch();
+    fetchCurrencies();
   };
 
   const openRateEditor = (currency: any) => {
@@ -59,25 +59,14 @@ const AdminCurrenciesPage = () => {
 
   const saveRates = async () => {
     if (!editingRate) return;
-    
-    const { error } = await supabase
-      .from("currencies")
-      .update({
-        buy_rate: parseFloat(rateForm.buy_rate),
-        sell_rate: parseFloat(rateForm.sell_rate),
-        admin_fee_percentage: parseFloat(rateForm.admin_fee_percentage),
-        last_updated: new Date().toISOString()
-      })
-      .eq("id", editingRate);
-    
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    
+    const updateData: any = {
+      exchange_rate: parseFloat(rateForm.buy_rate),
+    };
+    const { error } = await supabase.from("currencies").update(updateData).eq("id", editingRate);
+    if (error) { toast.error(error.message); return; }
     toast.success("Exchange rates updated");
     setEditingRate(null);
-    fetch();
+    fetchCurrencies();
   };
 
   return (
@@ -109,9 +98,7 @@ const AdminCurrenciesPage = () => {
                   <th className="text-left p-3 font-medium text-muted-foreground">Code</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">Name</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">Symbol</th>
-                  <th className="text-right p-3 font-medium text-muted-foreground">Buy Rate</th>
-                  <th className="text-right p-3 font-medium text-muted-foreground">Sell Rate</th>
-                  <th className="text-right p-3 font-medium text-muted-foreground">Fee %</th>
+                  <th className="text-right p-3 font-medium text-muted-foreground">Exchange Rate</th>
                   <th className="text-center p-3 font-medium text-muted-foreground">Default</th>
                   <th className="text-center p-3 font-medium text-muted-foreground">Status</th>
                   <th className="text-center p-3 font-medium text-muted-foreground">Actions</th>
@@ -124,66 +111,32 @@ const AdminCurrenciesPage = () => {
                       <td className="p-3 font-mono font-medium">{c.code}</td>
                       <td className="p-3">{c.name}</td>
                       <td className="p-3">{c.symbol}</td>
-                      <td className="p-3 text-right font-mono text-sm">{c.buy_rate?.toFixed(4) || "1.0000"}</td>
-                      <td className="p-3 text-right font-mono text-sm">{c.sell_rate?.toFixed(4) || "1.0000"}</td>
-                      <td className="p-3 text-right font-mono text-sm">{c.admin_fee_percentage?.toFixed(2) || "0.00"}%</td>
+                      <td className="p-3 text-right font-mono text-sm">{c.exchange_rate?.toFixed(4) || "1.0000"}</td>
                       <td className="p-3 text-center">{c.is_default ? <Badge className="text-xs">Default</Badge> : "—"}</td>
                       <td className="p-3 text-center">
                         <Badge variant={c.enabled ? "default" : "secondary"} className="text-xs">{c.enabled ? "Enabled" : "Disabled"}</Badge>
                       </td>
                       <td className="p-3 text-center">
                         <div className="flex gap-1 justify-center flex-wrap">
-                          <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => openRateEditor(c)}>
-                            Edit Rates
-                          </Button>
-                          <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => toggleEnabled(c.id, c.enabled)}>
-                            {c.enabled ? "Disable" : "Enable"}
-                          </Button>
+                          <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => openRateEditor(c)}>Edit Rate</Button>
+                          <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => toggleEnabled(c.id, c.enabled)}>{c.enabled ? "Disable" : "Enable"}</Button>
                           {!c.is_default && <Button size="sm" variant="outline" className="text-xs h-7" onClick={() => setDefault(c.id)}>Set Default</Button>}
                         </div>
                       </td>
                     </tr>
                     {editingRate === c.id && (
                       <tr className="bg-muted/30">
-                        <td colSpan={9} className="p-4">
+                        <td colSpan={7} className="p-4">
                           <div className="space-y-3">
-                            <h4 className="font-medium text-sm">Edit Exchange Rates for {c.code}</h4>
-                            <div className="grid grid-cols-3 gap-3">
+                            <h4 className="font-medium text-sm">Edit Exchange Rate for {c.code}</h4>
+                            <div className="grid grid-cols-2 gap-3">
                               <div>
-                                <label className="text-xs text-muted-foreground">Buy Rate (User buys {c.code})</label>
-                                <Input
-                                  type="number"
-                                  step="0.0001"
-                                  value={rateForm.buy_rate}
-                                  onChange={(e) => setRateForm({...rateForm, buy_rate: e.target.value})}
-                                  className="mt-1"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-xs text-muted-foreground">Sell Rate (User sells {c.code})</label>
-                                <Input
-                                  type="number"
-                                  step="0.0001"
-                                  value={rateForm.sell_rate}
-                                  onChange={(e) => setRateForm({...rateForm, sell_rate: e.target.value})}
-                                  className="mt-1"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-xs text-muted-foreground">Admin Fee %</label>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  max="100"
-                                  value={rateForm.admin_fee_percentage}
-                                  onChange={(e) => setRateForm({...rateForm, admin_fee_percentage: e.target.value})}
-                                  className="mt-1"
-                                />
+                                <label className="text-xs text-muted-foreground">Exchange Rate</label>
+                                <Input type="number" step="0.0001" value={rateForm.buy_rate} onChange={(e) => setRateForm({...rateForm, buy_rate: e.target.value})} className="mt-1" />
                               </div>
                             </div>
                             <div className="flex gap-2">
-                              <Button size="sm" onClick={saveRates}>Save Rates</Button>
+                              <Button size="sm" onClick={saveRates}>Save</Button>
                               <Button size="sm" variant="outline" onClick={() => setEditingRate(null)}>Cancel</Button>
                             </div>
                           </div>
